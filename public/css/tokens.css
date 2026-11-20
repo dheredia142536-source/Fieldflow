@@ -1,0 +1,146 @@
+/* FieldFlow · tokens de diseño (sistema Samara: Parchment / Ink / Sky Blue + acento Evergreen) */
+@font-face {
+  font-family: 'DM Sans';
+  src: url('/fonts/DMSans-var.woff') format('woff');
+  font-weight: 100 1000;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: light;
+  /* Paleta base */
+  --parchment: #fdfdf7;
+  --sand: #f5f2de;
+  --wood: #e7e3e1;
+  --ash: #d3d3d3;
+  --stone: #999999;
+  --graphite: #666666;
+  --ink: #000000;
+  --white: #ffffff;
+  --evergreen: #375033;
+  --sky: #0096f7;
+  --orange: #ff4000;
+
+  /* Semánticos (claro) */
+  --bg: var(--parchment);
+  --surface: #ffffff;
+  --card: var(--sand);
+  --text: #0b0b09;
+  --text-2: #55554f;
+  --line: rgba(0, 0, 0, 0.1);
+  --line-strong: rgba(0, 0, 0, 0.2);
+  --accent: var(--sky);               /* decorativo, íconos, enfoque */
+  --accent-strong: #006bb8;           /* fondos de botón y texto de enlace (contraste AA con blanco) */
+  --on-accent: #ffffff;
+  --accent-soft: rgba(0, 150, 247, 0.1);
+  --green: var(--evergreen);
+  --green-soft: rgba(55, 80, 51, 0.1);
+  --warn: #b83200;                     /* texto de alerta (contraste AA) */
+  --warn-soft: rgba(255, 64, 0, 0.12);
+  --ok: #2c6b32;
+  --focus: #006bb8;
+  --input-bg: rgba(0, 0, 0, 0.03);
+  --bubble-me: #dff0ff;
+  --bubble-them: #ffffff;
+  --rows-color: %23375033;
+  --rows: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='180' viewBox='0 0 640 180'%3E%3Cg fill='none' stroke='%23375033' stroke-opacity='.2' stroke-width='1.2'%3E%3Cpath d='M-10 22C140 -6 300 48 650 14'/%3E%3Cpath d='M-10 44C140 16 300 70 650 36'/%3E%3Cpath d='M-10 66C140 38 300 92 650 58'/%3E%3Cpath d='M-10 88C140 60 300 114 650 80'/%3E%3Cpath d='M-10 110C140 82 300 136 650 102'/%3E%3Cpath d='M-10 132C140 104 300 158 650 124'/%3E%3Cpath d='M-10 154C140 126 300 180 650 146'/%3E%3C/g%3E%3C/svg%3E");
+
+  /* Parcelas del calendario (texto blanco, contraste AA) */
+  --p1: #375033; --p2: #006bb8; --p3: #8a4b2d; --p4: #566b2a; --p5: #b83200; --p6: #4a5568;
+
+  /* Tipografía */
+  --font: 'DM Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.875rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.125rem;
+  --fs-xl: 1.4375rem;
+  --fs-2xl: clamp(1.625rem, 1.2rem + 1.8vw, 1.875rem);
+  --fs-3xl: clamp(1.875rem, 1.3rem + 2.6vw, 2.5rem);
+  --fs-display: clamp(2.5rem, 1.2rem + 6.4vw, 5.25rem);
+
+  /* Espaciado (escala Samara) */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px; --s-8: 72px;
+
+  /* Radios y sombras */
+  --r-sm: 8px; --r-md: 12px; --r-lg: 18px; --r-pill: 999px;
+  --shadow-1: rgba(0, 0, 0, 0.12) 0 0.5px 2px 0;
+  --shadow-2: rgba(0, 0, 0, 0.12) 0 2px 4px 0;
+  --shadow-3: rgba(0, 0, 0, 0.08) 0 2px 10px 0;
+  --shadow-pop: rgba(0, 0, 0, 0.18) 0 8px 30px 0;
+
+  /* Safe areas (iPhone) */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+
+  --tabbar-h: 62px;
+  --topbar-h: 60px;
+  --rail-w: 248px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Oscuro: automático o forzado */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #11130f;
+  --surface: #1a1d17;
+  --card: #20241c;
+  --text: #f4f3ea;
+  --text-2: #b9b8ab;
+  --line: rgba(255, 255, 255, 0.12);
+  --line-strong: rgba(255, 255, 255, 0.24);
+  --accent: #4cb6ff;
+  --accent-strong: #4cb6ff;
+  --on-accent: #04121c;
+  --accent-soft: rgba(76, 182, 255, 0.14);
+  --green: #8fbf86;
+  --green-soft: rgba(143, 191, 134, 0.14);
+  --warn: #ff9a73;
+  --warn-soft: rgba(255, 128, 85, 0.16);
+  --ok: #8fd18a;
+  --focus: #4cb6ff;
+  --input-bg: rgba(255, 255, 255, 0.06);
+  --bubble-me: #123a57;
+  --bubble-them: #23271e;
+  --shadow-1: rgba(0, 0, 0, 0.5) 0 0.5px 2px 0;
+  --shadow-2: rgba(0, 0, 0, 0.5) 0 2px 4px 0;
+  --shadow-3: rgba(0, 0, 0, 0.4) 0 2px 10px 0;
+  --shadow-pop: rgba(0, 0, 0, 0.6) 0 8px 30px 0;
+  --rows: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='180' viewBox='0 0 640 180'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='.08' stroke-width='1.2'%3E%3Cpath d='M-10 22C140 -6 300 48 650 14'/%3E%3Cpath d='M-10 44C140 16 300 70 650 36'/%3E%3Cpath d='M-10 66C140 38 300 92 650 58'/%3E%3Cpath d='M-10 88C140 60 300 114 650 80'/%3E%3Cpath d='M-10 110C140 82 300 136 650 102'/%3E%3Cpath d='M-10 132C140 104 300 158 650 124'/%3E%3Cpath d='M-10 154C140 126 300 180 650 146'/%3E%3C/g%3E%3C/svg%3E");
+  --p1: #3f6b3a; --p2: #1a70ba; --p3: #a35c39; --p4: #5d7530; --p5: #d4410c; --p6: #5d6a80;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: #11130f;
+    --surface: #1a1d17;
+    --card: #20241c;
+    --text: #f4f3ea;
+    --text-2: #b9b8ab;
+    --line: rgba(255, 255, 255, 0.12);
+    --line-strong: rgba(255, 255, 255, 0.24);
+    --accent: #4cb6ff;
+    --accent-strong: #4cb6ff;
+    --on-accent: #04121c;
+    --accent-soft: rgba(76, 182, 255, 0.14);
+    --green: #8fbf86;
+    --green-soft: rgba(143, 191, 134, 0.14);
+    --warn: #ff9a73;
+    --warn-soft: rgba(255, 128, 85, 0.16);
+    --ok: #8fd18a;
+    --focus: #4cb6ff;
+    --input-bg: rgba(255, 255, 255, 0.06);
+    --bubble-me: #123a57;
+    --bubble-them: #23271e;
+    --shadow-1: rgba(0, 0, 0, 0.5) 0 0.5px 2px 0;
+    --shadow-2: rgba(0, 0, 0, 0.5) 0 2px 4px 0;
+    --shadow-3: rgba(0, 0, 0, 0.4) 0 2px 10px 0;
+    --shadow-pop: rgba(0, 0, 0, 0.6) 0 8px 30px 0;
+    --rows: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='180' viewBox='0 0 640 180'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='.08' stroke-width='1.2'%3E%3Cpath d='M-10 22C140 -6 300 48 650 14'/%3E%3Cpath d='M-10 44C140 16 300 70 650 36'/%3E%3Cpath d='M-10 66C140 38 300 92 650 58'/%3E%3Cpath d='M-10 88C140 60 300 114 650 80'/%3E%3Cpath d='M-10 110C140 82 300 136 650 102'/%3E%3Cpath d='M-10 132C140 104 300 158 650 124'/%3E%3Cpath d='M-10 154C140 126 300 180 650 146'/%3E%3C/g%3E%3C/svg%3E");
+    --p1: #3f6b3a; --p2: #1a70ba; --p3: #a35c39; --p4: #5d7530; --p5: #d4410c; --p6: #5d6a80;
+  }
+}

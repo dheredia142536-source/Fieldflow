@@ -1,0 +1,19 @@
+{
+  "name": "fieldflow",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "FieldFlow — scheduling, coordination and logistics PWA for agriculture (ES/EN).",
+  "scripts": {
+    "dev": "node --no-warnings dev/server.mjs",
+    "test": "node --no-warnings dev/test.mjs && node dev/check-ui.mjs",
+    "icons": "node dev/make-icons.cjs",
+    "build": "node dev/stamp-sw.mjs"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}
