@@ -17,7 +17,7 @@ const STAFF = {
   config: () => import('./views/config.js'),
   simulador: () => import('./views/simulador.js'),
 };
-const PUBLIC = { '': () => import('./views/landing.js'), negocio: () => import('./views/login.js') };
+const PUBLIC = { '': () => import('./views/landing.js'), negocio: () => import('./views/login.js'), registro: () => import('./views/registro.js') };
 
 let cleanup = null;
 let seq = 0;
@@ -54,7 +54,7 @@ const NAV = [
   { id: 'hoy', icon: 'home', key: 'nav.today', tab: true },
   { id: 'calendario', icon: 'calendar', key: 'nav.calendar', tab: true },
   { id: 'chats', icon: 'chat', key: 'nav.chats', tab: true },
-  { id: 'clientes', icon: 'users', key: 'nav.clients', tab: true },
+  { id: 'clientes', icon: 'users', key: 'nav.clients', tab: false },
   { id: 'simulador', icon: 'phone', key: 'nav.simulator', tab: false },
   { id: 'config', icon: 'settings', key: 'nav.settings', tab: false },
   { id: 'mas', icon: 'more', key: 'nav.more', tab: true, railHidden: true },
@@ -62,8 +62,14 @@ const NAV = [
 
 function navLink(item, name, cls) {
   const badge = item.id === 'chats' && state.attention > 0 ? h('span', { class: 'count', 'aria-label': t('nav.pending', { n: state.attention }) }, String(state.attention)) : null;
-  return h('a', { href: `#/${item.id}`, 'aria-current': name === item.id || (item.id === 'mas' && ['config', 'simulador'].includes(name)) ? 'page' : null, class: cls }, icon(item.icon, 22), h('span', null, t(item.key)), badge);
+  const current = name === item.id || (item.id === 'mas' && ['config', 'simulador', 'clientes'].includes(name));
+  return h('a', { href: `#/${item.id}`, 'aria-current': current ? 'page' : null, class: cls, title: t(item.key) }, icon(item.icon, 22), h('span', { class: 'navlabel' }, t(item.key)), badge);
 }
+async function newCita() {
+  const m = await import('./views/cita-sheet.js');
+  m.openNewCitaSheet({ onDone: () => route() });
+}
+const fab = () => h('button', { class: 'fab', type: 'button', 'aria-label': t('nav.newCita'), onclick: newCita }, icon('plus', 26));
 
 function buildShell(role, name) {
   const biz = state.pub.nombre || 'FieldFlow';
@@ -78,18 +84,27 @@ function buildShell(role, name) {
     const main = h('main', { class: 'main', id: 'main', tabindex: '-1' });
     return { el: h('div', { class: 'shell shell--client', 'data-route': name }, h('a', { class: 'skip-link', href: '#main', onclick: (e) => { e.preventDefault(); main.focus(); } }, t('common.skip')), h('div', { class: 'shell__body' }, top, main), bar), main };
   }
+  const mini = pref('rail') === 'mini';
+  const toggleRail = () => { pref('rail', mini ? null : 'mini'); route(); };
   const rail = h('aside', { class: 'rail' },
-    h('a', { class: 'brand', href: '#/hoy' }, logo(32), biz),
+    h('div', { class: 'rail__head' },
+      h('a', { class: 'brand', href: '#/hoy', title: biz }, logo(32), h('span', { class: 'navlabel' }, biz)),
+      h('button', { class: 'btn btn--ghost btn--icon btn--sm rail__toggle', type: 'button', 'aria-label': t(mini ? 'nav.expandMenu' : 'nav.collapse'), 'aria-pressed': String(mini), onclick: toggleRail }, icon(mini ? 'expand' : 'collapse', 18))),
     h('nav', { 'aria-label': t('nav.main') }, NAV.filter((n) => !n.railHidden).map((n) => navLink(n, name))),
-    h('div', { class: 'rail__foot' }, h('div', { class: 'row' }, langSeg(), themeBtn()),
-      h('button', { class: 'navlink', type: 'button', onclick: logout }, icon('logout', 22), t('nav.logout'))));
+    h('div', { class: 'rail__foot' },
+      mini ? h('button', { class: 'btn btn--primary btn--icon', type: 'button', 'aria-label': t('nav.newCita'), title: t('nav.newCita'), onclick: newCita }, icon('plus', 20))
+        : h('div', { class: 'railcard' }, h('strong', null, t('nav.quickTitle')), h('span', null, t('nav.quickSub')),
+          h('button', { class: 'btn btn--primary btn--sm', type: 'button', onclick: newCita }, icon('plus', 16), t('nav.newCita'))),
+      h('div', { class: 'row rail__prefs' }, mini ? null : langSeg(), themeBtn()),
+      h('button', { class: 'navlink', type: 'button', onclick: logout, title: t('nav.logout') }, icon('logout', 22), h('span', { class: 'navlabel' }, t('nav.logout')))));
   const top = h('header', { class: 'topbar' },
     h('a', { class: 'brand', href: '#/hoy', 'aria-label': biz }, logo(32)),
     h('div', { class: 'topbar__title' }, t(NAV.find((n) => n.id === name)?.key || 'nav.today')),
     h('span', { class: 'only-sm' }, langSeg()));
-  const bar = h('nav', { class: 'tabbar', 'aria-label': t('nav.main') }, NAV.filter((n) => n.tab).map((n) => navLink(n, name)));
+  const tabs = NAV.filter((n) => n.tab).map((n) => navLink(n, name));
+  const bar = h('nav', { class: 'tabbar tabbar--fab', 'aria-label': t('nav.main') }, tabs.slice(0, 2), fab(), tabs.slice(2));
   const main = h('main', { class: 'main', id: 'main', tabindex: '-1' });
-  return { el: h('div', { class: 'shell shell--rail', 'data-route': name }, h('a', { class: 'skip-link', href: '#main', onclick: (e) => { e.preventDefault(); main.focus(); } }, t('common.skip')), rail, h('div', { class: 'shell__body' }, top, main), bar), main };
+  return { el: h('div', { class: `shell shell--rail${mini ? ' shell--mini' : ''}`, 'data-route': name }, h('a', { class: 'skip-link', href: '#main', onclick: (e) => { e.preventDefault(); main.focus(); } }, t('common.skip')), rail, h('div', { class: 'shell__body' }, top, main), bar), main };
 }
 
 // ── Enrutador ────────────────────────────────────────────────────────────────
@@ -103,8 +118,8 @@ async function route() {
   let role = null; let loader = null; let page = name;
   if (name in CLIENT && state.client) { role = 'client'; loader = CLIENT[name]; }
   else if (name in STAFF && state.staff) { role = 'staff'; loader = STAFF[name]; }
-  else if (state.staff && (name === '' || name === 'negocio' || name in CLIENT)) { go('#/hoy'); return; }
-  else if (state.client && (name === '' || name === 'negocio' || name in STAFF)) { go('#/chat'); return; }
+  else if (state.staff && (name === '' || name === 'negocio' || name === 'registro' || name in CLIENT)) { go('#/hoy'); return; }
+  else if (state.client && (name === '' || name === 'negocio' || name === 'registro' || name in STAFF)) { go('#/chat'); return; }
   else if (name in PUBLIC) { loader = PUBLIC[name]; }
   else { go('#/'); return; }
 

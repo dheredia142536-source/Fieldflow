@@ -76,7 +76,7 @@
   --sal: env(safe-area-inset-left, 0px);
   --sar: env(safe-area-inset-right, 0px);
 
-  --tabbar-h: 62px;
+  --tabbar-h: 84px;
   --topbar-h: 60px;
   --rail-w: 248px;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);

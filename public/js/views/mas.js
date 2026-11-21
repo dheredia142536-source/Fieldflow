@@ -11,6 +11,7 @@ export default function mas({ main, go, rerender, toggleTheme }) {
   main.append(h('div', { class: 'stack--lg stack' },
     h('div', { class: 'pagehead' }, h('div', null, h('h1', null, t('nav.more')), h('p', null, state.staff?.correo || ''))),
     h('div', { class: 'list' },
+      link('#/clientes', 'users', t('nav.clients'), t('mas.clientsSub')),
       link('#/config', 'settings', t('nav.settings'), t('mas.settingsSub')),
       link('#/simulador', 'phone', t('nav.simulator'), t('mas.simSub'))),
     h('section', { class: 'card card--surface stack' }, h('h2', { class: 'sectiontitle' }, t('mas.prefs')),

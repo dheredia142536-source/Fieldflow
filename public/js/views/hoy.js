@@ -32,7 +32,7 @@ export default async function hoy({ main, isCurrent, rerender }) {
       h('a', { class: `stat${r.atencion.length ? ' stat--alert' : ''}`, href: '#/chats', style: 'text-decoration:none' }, h('b', null, String(r.atencion.length)), h('span', null, t('hoy.statAttention')))),
     h('div', { class: 'cols' },
       h('section', { 'aria-labelledby': 'agenda' },
-        h('h2', { class: 'sectiontitle', id: 'agenda' }, t('hoy.agenda'), h('button', { class: 'btn btn--primary btn--sm right', type: 'button', onclick: () => openNewCitaSheet({ onDone: rerender }) }, icon('plus', 16), t('cita.new'))),
+        h('h2', { class: 'sectiontitle', id: 'agenda' }, t('hoy.agenda'), h('button', { class: 'btn btn--secondary btn--sm right', type: 'button', onclick: () => openNewCitaSheet({ onDone: rerender }) }, icon('plus', 16), t('cita.new'))),
         r.citas_hoy.length ? h('div', { class: 'list' }, r.citas_hoy.map(row))
           : empty({ art: emptyArt(), title: t('hoy.emptyTitle'), text: r.proxima ? t('hoy.emptyNext', { when: fmtWhen(r.proxima.inicio) }) : t('hoy.emptyText') })),
       h('section', { 'aria-labelledby': 'att' },

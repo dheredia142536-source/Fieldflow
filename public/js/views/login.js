@@ -1,4 +1,4 @@
-import { post } from '../api.js';
+import { get, post } from '../api.js';
 import { h, field, busy } from '../ui.js';
 import { icon, logo } from '../icons.js';
 import { t } from '../i18n.js';
@@ -19,6 +19,7 @@ export default function login({ main, go }) {
       try {
         const r = await post('/api/auth/login', { correo: email.value, password: pass.value });
         state.staff = r.usuario;
+        try { state.pub = await get('/api/public'); } catch { /* se actualiza al recargar */ }
         go('#/hoy');
       } catch (ex) { err.textContent = ex.message; err.hidden = false; pass.focus(); }
     });
@@ -27,5 +28,6 @@ export default function login({ main, go }) {
     h('a', { class: 'brand', href: '#/' }, logo(36), 'FieldFlow'),
     h('div', null, h('h1', null, t('login.title')), h('p', { class: 'muted', style: 'margin-top:6px' }, t('login.lead'))),
     h('div', { class: 'card card--lg' }, form),
+    h('p', { class: 'center' }, t('login.noAccount'), ' ', h('a', { href: '#/registro' }, t('login.create'))),
     h('a', { class: 'btn btn--ghost', href: '#/' }, icon('left', 18), t('common.back')))));
 }

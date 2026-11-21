@@ -24,7 +24,10 @@ async function request(method, path, body) {
   try { data = await res.json(); } catch { /* sin cuerpo */ }
   if (!res.ok) {
     const known = data?.error && t(`err.${data.error}`) !== `err.${data.error}` ? t(`err.${data.error}`) : null;
-    throw new ApiError(res.status, data?.error || 'error', known || data?.message || t('err.generic'));
+    const e = new ApiError(res.status, data?.error || 'error', known || data?.message || t('err.generic'));
+    if (data?.wait != null) e.wait = data.wait;
+    if (data?.restantes != null) e.restantes = data.restantes;
+    throw e;
   }
   return data;
 }

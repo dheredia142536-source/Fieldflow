@@ -21,7 +21,7 @@ self.addEventListener('fetch', (e) => {
 
   // Navegación: red primero; sin red, la app guardada o la página offline.
   if (req.mode === 'navigate') {
-    e.respondWith(fetch(req).then((res) => { const copy = res.clone(); caches.open(CACHE).then((c) => c.put('/', copy)); return res; })
+    e.respondWith(fetch(req).then((res) => { if (url.pathname === '/' && res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put('/', copy)); } return res; })
       .catch(async () => (await caches.match('/')) || (await caches.match('/offline.html'))));
     return;
   }

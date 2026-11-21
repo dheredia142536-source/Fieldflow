@@ -21,8 +21,8 @@ if (process.env.FF_MOCK_LLM === '1') {
   process.env.LLM_BASE_URL ||= `http://localhost:${PORT}/mock-llm/v1`;
 }
 
-const { default: api } = await import('../api/[...path].mjs');
-const { default: whatsapp } = await import('../api/whatsapp.mjs');
+const { GET: api } = await import('../api/[...path].mjs');
+const { POST: whatsapp } = await import('../api/whatsapp.mjs');
 
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',

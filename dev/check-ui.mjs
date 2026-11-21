@@ -10,7 +10,7 @@ const bad = (m) => { fail++; console.log('  ✗', m); };
 const files = [];
 (function walk(d) { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else if (p.endsWith('.js') && !p.endsWith('dict.js')) files.push(p); } })(new URL('../public/js/', import.meta.url).pathname);
 const used = new Set();
-for (const f of files) for (const m of readFileSync(f, 'utf8').matchAll(/['"`]((?:common|err|nav|landing|login|chat|install|citas|status|hoy|cal|cita|origin|chats|clients|mas|cfg|sim)\.[A-Za-z0-9_]+)['"`]/g)) used.add(m[1]);
+for (const f of files) for (const m of readFileSync(f, 'utf8').matchAll(/['"`]((?:common|err|nav|landing|login|chat|install|citas|status|hoy|cal|cita|origin|chats|clients|mas|cfg|sim|reg)\.[A-Za-z0-9_]+)['"`]/g)) used.add(m[1]);
 for (const k of used) for (const l of ['es', 'en']) if (!(k in dict[l])) bad(`falta ${l}: ${k}`);
 for (const k of Object.keys(dict.es)) if (!(k in dict.en)) bad(`falta en: ${k}`);
 for (const k of Object.keys(dict.en)) if (!(k in dict.es)) bad(`falta es: ${k}`);

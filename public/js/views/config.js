@@ -37,10 +37,12 @@ export default async function config({ main, isCurrent, rerender }) {
   const wa = sistema.whatsapp;
   const status = h('section', { class: 'card card--surface', 'aria-labelledby': 's1' }, h('h2', { class: 'sectiontitle', id: 's1' }, t('cfg.status')),
     row(t('cfg.llm'), sistema.llm.activo ? h('span', { class: 'badge badge--ok' }, `${sistema.llm.modelo} · ${sistema.llm.host}`) : h('span', { class: 'badge badge--info' }, t('cfg.demoMode'))),
-    sistema.llm.activo ? row(t('cfg.usage'), h('span', null, `${sistema.uso_ia_hoy} / ${sistema.llm.limite_diario}`)) : null,
-    row(t('cfg.waSend'), dot(wa.configurado)), row(t('cfg.waSecret'), dot(wa.app_secret)), row(t('cfg.waVerify'), dot(wa.verify_token)),
-    row(t('cfg.session'), dot(sistema.sesion_ok)),
-    row(t('cfg.webhook'), h('code', null, wa.webhook), copy(wa.webhook)),
+    sistema.principal && sistema.llm.activo ? row(t('cfg.usage'), h('span', null, `${sistema.uso_ia_hoy} / ${sistema.llm.limite_diario}`)) : null,
+    sistema.principal ? [
+      row(t('cfg.waSend'), dot(wa.configurado)), row(t('cfg.waSecret'), dot(wa.app_secret)), row(t('cfg.waVerify'), dot(wa.verify_token)),
+      row(t('cfg.session'), dot(sistema.sesion_ok)),
+      row(t('cfg.webhook'), h('code', null, wa.webhook), copy(wa.webhook)),
+    ] : h('p', { class: 'hint' }, t('cfg.waSoon')),
     h('div', { class: 'row mt' }, testBtn, demoBtn), tests);
 
   // ── Negocio ──

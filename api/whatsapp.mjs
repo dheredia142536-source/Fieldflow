@@ -1,6 +1,8 @@
 // Webhook de la WhatsApp Cloud API: https://TU-DOMINIO/webhooks/whatsapp (vercel.json lo reescribe a /api/whatsapp)
 // Cada mensaje entrante recibe un botón con enlace seguro a la PWA (el chat ocurre en la PWA).
 import { handleInbound } from '../lib/inbound.mjs';
+import { query } from '../lib/db.mjs';
+import { withNegocio } from '../lib/tenant.mjs';
 import { safeEqual, verifyMetaSignature } from '../lib/session.mjs';
 
 const text = (body, status = 200) => new Response(body, { status, headers: { 'content-type': 'text/plain; charset=utf-8' } });
@@ -39,12 +41,15 @@ async function webhook(req) {
   try { payload = JSON.parse(raw); } catch { return text('Bad request', 400); }
 
   const origin = `${url.protocol}//${req.headers.get('x-forwarded-host') || url.host}`;
+  // El número de WhatsApp de la plataforma atiende al negocio principal (el del administrador).
+  let principal = null;
+  try { [principal] = await query('select id from negocios where principal = 1 limit 1'); } catch (e) { console.error('[webhook]', e); }
+  if (!principal) { console.error('[webhook] no hay negocio principal: el administrador debe iniciar sesión una vez'); return text('ok'); }
   for (const m of extractMessages(payload)) {
-    try { await handleInbound({ ...m, origin }); } catch (e) { console.error('[webhook]', e); }
+    try { await withNegocio(principal.id, () => handleInbound({ ...m, origin })); } catch (e) { console.error('[webhook]', e); }
   }
   return text('ok'); // siempre 200 para mensajes firmados: evita reintentos en cascada de Meta
 }
 
 export const GET = webhook;
 export const POST = webhook;
-export default webhook;
