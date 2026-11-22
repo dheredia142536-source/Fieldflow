@@ -12,7 +12,7 @@ function restore(req) {
   url.searchParams.delete('__p');
   let route = p;
   for (let i = 0; i < 2; i++) { try { const d = decodeURIComponent(route); if (d === route) break; route = d; } catch { break; } }
-  route = route.replace(/^\/+/, '').replace(/^api\//, '');
+  route = route.trim().replace(/^\/+/, '').replace(/\/+$/, '').replace(/^api\//, '');
   url.pathname = `/api/${route}`;
   const init = { method: req.method, headers: req.headers };
   if (req.method !== 'GET' && req.method !== 'HEAD') { init.body = req.body; init.duplex = 'half'; }
