@@ -25,7 +25,7 @@ async function request(method, path, body) {
   if (!res.ok) {
     const known = data?.error && t(`err.${data.error}`) !== `err.${data.error}` ? t(`err.${data.error}`) : null;
     const base = known || data?.message || t('err.generic');
-    const e = new ApiError(res.status, data?.error || 'error', res.status >= 500 || !data ? `${base} [${res.status}${data?.detail ? ' ' + data.detail : ''}]` : base);
+    const e = new ApiError(res.status, data?.error || 'error', res.status >= 500 || !data ? `${base} [${res.status}${data?.detail ? ' ' + data.detail : ''}]` : res.status === 404 && data?.message ? `${base} [${data.message.replace(/^Ruta no encontrada: /, '')}]` : base);
     if (data?.wait != null) e.wait = data.wait;
     if (data?.restantes != null) e.restantes = data.restantes;
     throw e;
