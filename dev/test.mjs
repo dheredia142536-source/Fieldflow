@@ -23,7 +23,7 @@ const llm = http.createServer(async (req, res) => {
 }).listen(0);
 const llmPort = llm.address().port;
 
-const { GET: api } = await import('../api/[...path].mjs');
+const { GET: api } = await import('../api/router.mjs');
 const { POST: wa } = await import('../api/whatsapp.mjs');
 const { crearCita: crearCita0 } = await import('../lib/citas.mjs');
 const { slotsFor: slotsFor0 } = await import('../lib/availability.mjs');

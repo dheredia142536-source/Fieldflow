@@ -4,7 +4,8 @@
   "buildCommand": "npm run build",
   "outputDirectory": "public",
   "rewrites": [
-    { "source": "/webhooks/whatsapp", "destination": "/api/whatsapp" }
+    { "source": "/webhooks/whatsapp", "destination": "/api/whatsapp" },
+    { "source": "/api/:path+", "destination": "/api/router?__p=:path+" }
   ],
   "functions": {
     "api/**/*.mjs": {
