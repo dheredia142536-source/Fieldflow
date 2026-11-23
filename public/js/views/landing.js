@@ -4,6 +4,8 @@ import { icon, logo } from '../icons.js';
 import { t, getLang, setLang } from '../i18n.js';
 import { state } from '../state.js';
 import { fmtDay, todayLocal } from '../time.js';
+import { reveal, scrollFx, splitWords, story } from '../fx.js';
+import { buildStory } from './phone.js';
 
 // Imágenes del hero: una por formato (dirección de arte). Si falta alguna, se dibuja un campo ilustrado con CSS.
 const HERO = { wide: '/img/hero/hero-wide.webp', mid: '/img/hero/hero-mid.webp', tall: '/img/hero/hero-tall.webp' };
@@ -82,30 +84,41 @@ export default function landing({ main, rerender, toggleTheme }) {
         h('div', { class: 'actions' }, primary, secondary))),
     frame);
 
-  // ── Cómo funciona (bento) ──
-  const steps = h('section', { class: 'lsec', id: 'how', 'aria-labelledby': 'how-t' },
-    h('div', { class: 'lsec__head' }, h('span', { class: 'eyebrow' }, t('landing.howEyebrow')), h('h2', { id: 'how-t' }, t('landing.how'))),
-    h('ol', { class: 'bento' },
-      [['chat', 1], ['phone', 2], ['calendar', 3]].map(([ic, n]) => h('li', { class: `bento__card${n === 1 ? ' bento__card--hl' : ''}` },
-        h('span', { class: 'bento__icon', 'aria-hidden': 'true' }, icon(ic, 22)),
-        h('span', { class: 'bento__n' }, `0${n}`),
-        h('h3', null, t(`landing.s${n}t`)), h('p', null, t(`landing.s${n}d`))))));
+  // ── Cómo funciona: teléfono animado con escenas ──
+  const st = buildStory();
+  const steps = st.el;
+
+  // ── Franja de públicos (se desplaza sola) ──
+  const kinds = ['finca', 'cooperativa', 'transporte', 'insumos', 'asistencia'].map((k) => t(`reg.type_${k}`));
+  const track = (hidden) => h('ul', { class: 'mq__track', 'aria-hidden': hidden ? 'true' : null }, kinds.map((k) => h('li', null, icon('leaf', 16), k)));
+  const marquee = h('div', { class: 'mq', 'data-reveal': '1' }, h('div', { class: 'mq__inner' }, track(false), track(true)));
 
   const benefits = h('section', { class: 'lsec', id: 'benefits', 'aria-labelledby': 'ben-t' },
-    h('div', { class: 'lsec__head' }, h('span', { class: 'eyebrow' }, t('landing.benEyebrow')), h('h2', { id: 'ben-t' }, t('landing.benTitle'))),
+    h('div', { class: 'lsec__head', 'data-reveal': '1' }, h('span', { class: 'eyebrow' }, t('landing.benEyebrow')), h('h2', { id: 'ben-t' }, t('landing.benTitle'))),
     h('ul', { class: 'bento bento--4' },
-      [['shield', 'b1'], ['hand', 'b2'], ['mic', 'b3'], ['globe', 'b4']].map(([ic, k]) => h('li', { class: 'bento__card' },
+      [['shield', 'b1'], ['hand', 'b2'], ['mic', 'b3'], ['globe', 'b4']].map(([ic, k], i) => h('li', { class: 'bento__card', 'data-reveal': String(i + 1) },
         h('span', { class: 'bento__icon', 'aria-hidden': 'true' }, icon(ic, 22)),
         h('h3', null, t(`landing.${k}t`)), h('p', null, t(`landing.${k}d`))))),
-    h('div', { class: 'lcta' },
+    h('div', { class: 'lcta', 'data-reveal': '1' },
       h('div', null, h('h2', null, t('landing.ctaTitle')), h('p', null, t('landing.ctaSub'))),
       h('a', { class: 'btn btn--onink btn--lg', href: '#/registro' }, t('landing.signup'), icon('right', 18))));
 
-  main.append(h('div', { class: 'lpage' }, nav,
+  const bar = h('div', { class: 'lprogress', 'aria-hidden': 'true' });
+  const page = h('div', { class: 'lpage' }, bar, nav,
     h('main', { class: 'landing', id: 'main' },
       state.linkError ? h('div', { class: 'banner banner--warn', role: 'alert' }, icon('alert', 20), h('span', null, `${state.linkError} ${t('landing.linkHelp')}`)) : null,
-      hero, !waLink ? h('p', { class: 'hint' }, t('landing.noWa')) : null, steps, benefits,
-      h('footer', { class: 'lfoot' }, h('span', { class: 'brand' }, logo(24), 'FieldFlow'), h('span', null, t('landing.foot')), h('a', { href: '/legal.html' }, t('reg.terms'))))));
+      hero, !waLink ? h('p', { class: 'hint' }, t('landing.noWa')) : null, marquee, steps, benefits,
+      h('footer', { class: 'lfoot' }, h('span', { class: 'brand' }, logo(24), 'FieldFlow'), h('span', null, t('landing.foot')), h('a', { href: '/legal.html' }, t('reg.terms')))));
+  main.append(page);
 
-  return () => document.removeEventListener('keydown', onKey);
+  // ── Movimiento ──
+  splitWords(page.querySelector('#hero-t'));
+  const stops = [
+    reveal(page),
+    scrollFx({ nav: nav.querySelector('.lnav__bar'), bar, parallax: [{ el: img, speed: 40 }] }),
+    story({ root: steps, phone: st.phone, steps: st.steps }),
+  ];
+  requestAnimationFrame(() => page.classList.add('is-ready'));
+
+  return () => { document.removeEventListener('keydown', onKey); stops.forEach((f) => f()); };
 }
