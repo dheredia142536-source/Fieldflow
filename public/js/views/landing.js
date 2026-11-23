@@ -6,6 +6,7 @@ import { state } from '../state.js';
 import { fmtDay, todayLocal } from '../time.js';
 import { reveal, scrollFx, splitWords, story } from '../fx.js';
 import { buildStory } from './phone.js';
+import { buildShelf } from './shelf.js';
 
 // Imágenes del hero: una por formato (dirección de arte). Si falta alguna, se dibuja un campo ilustrado con CSS.
 const HERO = { wide: '/img/hero/hero-wide.webp', mid: '/img/hero/hero-mid.webp', tall: '/img/hero/hero-tall.webp' };
@@ -88,6 +89,9 @@ export default function landing({ main, rerender, toggleTheme }) {
   const st = buildStory();
   const steps = st.el;
 
+  // ── Estantería 3D de servicios ──
+  const shelf = buildShelf({ ctaHref: waLink || '#/registro' });
+
   // ── Franja de públicos (se desplaza sola) ──
   const kinds = ['finca', 'cooperativa', 'transporte', 'insumos', 'asistencia'].map((k) => t(`reg.type_${k}`));
   const track = (hidden) => h('ul', { class: 'mq__track', 'aria-hidden': hidden ? 'true' : null }, kinds.map((k) => h('li', null, icon('leaf', 16), k)));
@@ -107,14 +111,14 @@ export default function landing({ main, rerender, toggleTheme }) {
   const page = h('div', { class: 'lpage' }, bar, nav,
     h('main', { class: 'landing', id: 'main' },
       state.linkError ? h('div', { class: 'banner banner--warn', role: 'alert' }, icon('alert', 20), h('span', null, `${state.linkError} ${t('landing.linkHelp')}`)) : null,
-      hero, !waLink ? h('p', { class: 'hint' }, t('landing.noWa')) : null, marquee, steps, benefits,
+      hero, !waLink ? h('p', { class: 'hint' }, t('landing.noWa')) : null, marquee, shelf.el, steps, benefits,
       h('footer', { class: 'lfoot' }, h('span', { class: 'brand' }, logo(24), 'FieldFlow'), h('span', null, t('landing.foot')), h('a', { href: '/legal.html' }, t('reg.terms')))));
   main.append(page);
 
   // ── Movimiento ──
   splitWords(page.querySelector('#hero-t'));
   const stops = [
-    reveal(page),
+    reveal(page), shelf.destroy,
     scrollFx({ nav: nav.querySelector('.lnav__bar'), bar, parallax: [{ el: img, speed: 40 }] }),
     story({ root: steps, phone: st.phone, steps: st.steps }),
   ];
