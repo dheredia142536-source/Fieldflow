@@ -1,10 +1,10 @@
 /* FieldFlow · service worker. Versión y lista de precarga las estampa dev/stamp-sw.mjs al compilar. */
-const VERSION = '430eb52818';
-const PRECACHE = ["/","/css/app.css","/css/base.css","/css/motion.css","/css/tokens.css","/fonts/DMSans-var.woff","/icons/apple-touch-icon.png","/icons/favicon-32.png","/icons/favicon.svg","/icons/icon-192.png","/icons/icon-512.png","/icons/icon-maskable-512.png","/img/hero/LEEME.md","/img/hero/hero-mid.webp","/img/hero/hero-tall.webp","/img/hero/hero-wide.webp","/js/api.js","/js/app.js","/js/components.js","/js/dict.js","/js/fx.js","/js/i18n.js","/js/icons.js","/js/install.js","/js/state.js","/js/theme-init.js","/js/time.js","/js/ui.js","/js/views/calendario.js","/js/views/chat.js","/js/views/chats.js","/js/views/cita-sheet.js","/js/views/citas.js","/js/views/clientes.js","/js/views/config.js","/js/views/hoy.js","/js/views/landing.js","/js/views/login.js","/js/views/mas.js","/js/views/phone.js","/js/views/registro.js","/js/views/shelf.js","/js/views/simulador.js","/js/voice.js","/legal.html","/manifest.webmanifest","/offline.html"];
+const VERSION = '83eff6d946';
+const PRECACHE = ["/","/css/app.css","/css/base.css","/css/motion.css","/css/phone.css","/css/tokens.css","/fonts/DMSans-var.woff","/icons/apple-touch-icon.png","/icons/favicon-32.png","/icons/favicon.svg","/icons/icon-192.png","/icons/icon-512.png","/icons/icon-maskable-512.png","/img/hero/LEEME.md","/img/hero/hero-mid.webp","/img/hero/hero-tall.webp","/img/hero/hero-wide.webp","/js/api.js","/js/app.js","/js/components.js","/js/dict.js","/js/fx.js","/js/i18n.js","/js/icons.js","/js/install.js","/js/state.js","/js/theme-init.js","/js/time.js","/js/ui.js","/js/views/calendario.js","/js/views/chat.js","/js/views/chats.js","/js/views/cita-sheet.js","/js/views/citas.js","/js/views/clientes.js","/js/views/config.js","/js/views/hoy.js","/js/views/landing.js","/js/views/login.js","/js/views/mas.js","/js/views/phone.js","/js/views/registro.js","/js/views/shelf.js","/js/views/simulador.js","/js/voice.js","/legal.html","/manifest.webmanifest","/offline.html"];
 const CACHE = `fieldflow-${VERSION}`;
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE.map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {
@@ -30,6 +30,9 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((res) => { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); return res; })));
     return;
   }
-  // CSS/JS: red primero con respaldo en caché (así una actualización llega de inmediato).
-  e.respondWith(fetch(req).then((res) => { if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); } return res; }).catch(() => caches.match(req)));
+  // CSS/JS: red primero y siempre revalidando con el servidor (cache: 'no-cache'), para que nunca se mezcle
+  // un estilo viejo con código nuevo. Sin red, la copia guardada (sin importar el ?v= de la dirección).
+  const key = url.origin + url.pathname;
+  e.respondWith(fetch(req, { cache: 'no-cache' }).then((res) => { if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(key, copy)); } return res; })
+    .catch(() => caches.match(key, { ignoreSearch: true })));
 });

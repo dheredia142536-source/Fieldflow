@@ -120,7 +120,7 @@ export default function landing({ main, rerender, toggleTheme }) {
   const stops = [
     reveal(page), shelf.destroy,
     scrollFx({ nav: nav.querySelector('.lnav__bar'), bar, parallax: [{ el: img, speed: 40 }] }),
-    story({ root: steps, phone: st.phone, steps: st.steps, caps: st.caps, pips: st.pips }),
+    story({ root: steps, phone: st.phone, steps: st.steps, pips: st.pips, onScene: st.show }), st.destroy,
   ];
   requestAnimationFrame(() => page.classList.add('is-ready'));
 
