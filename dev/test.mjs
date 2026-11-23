@@ -350,6 +350,35 @@ const forged2 = new Jar(); forged2.c.ff_staff = maria.c.ff_staff.split('.')[0] +
 r = await forged2.call('GET', '/api/staff/catalogo');
 ok(r.status === 401, 'una cookie con otro negocio y firma falsa no sirve');
 
+section('14. Dashboard');
+const { buildModel, answer, parse: parseRows, addDays: dAdd } = await import('../public/js/views/dash-model.js');
+r = await new Jar().call('GET', '/api/staff/dashboard');
+ok(r.status === 401, 'el dashboard exige sesión');
+r = await staff.call('GET', '/api/staff/dashboard');
+const D = r.data;
+ok(r.status === 200 && D.citas.length > 40 && D.servicios.length === 5 && D.recursos.length === 5, `dashboard: historial de ejemplo (${D.citas?.length} citas)`);
+ok(JSON.stringify(D).length < 400000, `la respuesta es liviana (${Math.round(JSON.stringify(D).length / 1024)} KB)`);
+ok(D.capacidad.length === 5 && D.capacidad.every((c) => c.length === 7 && c[0] > 0 && c[6] === 0), 'capacidad por recurso y día (domingo = 0)');
+const M30 = buildModel(D, { dias: 30 });
+ok(M30.series.length === 30 && M30.series.reduce((a, b) => a + b, 0) === M30.vigentes, 'la serie diaria suma las citas vigentes');
+ok(M30.kpi.ocup.v >= 0 && M30.kpi.ocup.v <= 100 && M30.kpi.cancel.v >= 0 && M30.kpi.cancel.v <= 100 && M30.kpi.auto.v <= 100, 'ocupación, cancelación y automatización entre 0 y 100');
+ok(M30.origen.reduce((a, b) => a + b, 0) === M30.vigentes, 'el origen suma las citas vigentes');
+ok(M30.estados.reduce((a, b) => a + b, 0) === M30.rows.length, 'los estados suman todas las citas del periodo');
+ok(M30.servicios.reduce((a, b) => a + b.n, 0) === M30.vigentes, 'los servicios suman las citas vigentes');
+const M7 = buildModel(D, { dias: 7 }); const M90 = buildModel(D, { dias: 90 });
+ok(M7.vigentes <= M30.vigentes && M30.vigentes <= M90.vigentes, 'más días ⇒ más citas (7 ≤ 30 ≤ 90)');
+const filt = buildModel(D, { dias: 30, svc: new Set([0]) });
+ok(filt.vigentes === M30.servicios.find((x) => x.i === 0).n, 'filtrar por servicio deja solo sus citas');
+ok(M30.futuro.length === 14 && M30.futuro.every((d) => d.pct >= 0 && d.pct <= 100), 'capacidad de 14 días entre 0 y 100');
+ok(M30.insights.length > 0 && M30.insights.every((i) => i.k && i.tone && i.ico), `hay hallazgos automáticos (${M30.insights.map((i) => i.k).join(', ')})`);
+ok(answer('peak', M30, D).k === 'a_peak' && answer('topSvc', M30, D).k === 'a_topSvc', 'las preguntas rápidas responden con datos');
+ok(M30.funnel.clientes >= M30.funnel.cita && M30.funnel.cita >= M30.funnel.recurrentes, 'embudo decreciente (clientes ≥ con cita ≥ recurrentes)');
+const t0 = performance.now(); for (let i = 0; i < 20; i++) buildModel(D, { dias: 90, rows: parseRows(D) }); const ms = (performance.now() - t0) / 20;
+ok(ms < 60, `calcular el dashboard completo toma ${ms.toFixed(1)} ms`);
+ok(dAdd('2026-03-01', -1) === '2026-02-28', 'aritmética de fechas');
+r = await maria.call('GET', '/api/staff/dashboard');
+ok(r.status === 200 && !JSON.stringify(r.data).includes(D.servicios[0].id) && r.data.citas.every((x) => !D.citas.some((y) => y[9] === x[9])), 'el dashboard de otro negocio no mezcla datos');
+
 console.log(`\n${pass} correctas, ${fail} con error`);
 llm.close();
 process.exit(fail ? 1 : 0);
