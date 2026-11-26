@@ -25,7 +25,7 @@ export const dict = {
     'login.noAccount': '¿Aún no tienes cuenta?', 'login.create': 'Crear cuenta',
     'welcome.title': 'Haz crecer tu campo con inteligencia.', 'welcome.photo': 'Vacas pastando en una finca al amanecer', 'welcome.connecting': 'Conectando con Google…', 'welcome.solutions': 'Soluciones', 'welcome.resources': 'Recursos', 'welcome.community': 'Comunidad', 'welcome.lead': 'Agenda, coordina y mueve tu operación del campo desde un solo lugar.',
     'welcome.google': 'Continuar con Google', 'welcome.email': 'Continuar con correo', 'welcome.member': '¿Ya eres miembro?', 'welcome.login': 'Inicia sesión',
-    'welcome.agree': 'Al continuar aceptas nuestros', 'welcome.terms': 'Términos y Privacidad',
+    'welcome.agree': 'Al continuar aceptas los', 'welcome.terms': 'Términos y Privacidad',
     'login.google': 'Continuar con Google', 'login.or': 'o con tu correo', 'login.forgot': '¿Olvidaste tu contraseña?',
     'forgot.title': 'Recupera tu contraseña', 'forgot.lead': 'Escribe tu correo y te enviamos un código para crear una contraseña nueva.',
     'forgot.send': 'Enviar código', 'forgot.codeTitle': 'Crea tu contraseña nueva', 'forgot.codeSent': 'Si {email} tiene una cuenta, te enviamos un código de 6 dígitos. Vence en {min} minutos. Revisa también spam.',

@@ -488,18 +488,17 @@ a.item, a.stat, a.pcard { text-decoration: none; color: inherit; }
 .wl__menu a { display: flex; align-items: center; min-height: 48px; padding: 0 14px; border-radius: var(--r-md); color: var(--text); font-weight: 600; text-decoration: none; }
 .wl__menu a:hover { background: var(--card); }
 .wl__title { font-size: clamp(2.5rem, 10.4vw, 4.125rem); font-weight: 600; letter-spacing: -0.06em; line-height: 1.05; color: #fff; max-width: 13ch; text-shadow: 0 2px 22px rgba(0, 0, 0, 0.28); }
-.wl__sheet { position: relative; z-index: 1; align-self: end; justify-self: center; width: 100%; max-width: 560px; background: var(--surface); color: var(--text); border-radius: 32px 32px 0 0; box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.12); padding: 12px calc(var(--sar) + 24px) calc(var(--sab) + 24px) calc(var(--sal) + 24px); }
-.wl__sheet::before { content: ''; display: block; width: 40px; height: 4px; margin: 0 auto 20px; border-radius: 2px; background: var(--line-strong); }
-.wl__actions { display: grid; gap: 12px; max-width: 440px; margin: 0 auto; }
-.wbtn { position: relative; display: flex; align-items: center; justify-content: center; min-height: 52px; padding: 0 52px; border: 1px solid #8a8782; border-radius: var(--r-md); background: var(--surface); color: var(--text); font-size: var(--fs-md); font-weight: 600; text-decoration: none; transition: transform .15s var(--ease), background-color .15s, border-color .15s; }
-.wbtn > svg { position: absolute; left: 16px; top: 50%; translate: 0 -50%; }
+.wl__sheet { --surface: #fff; --text: #262320; --text-2: #5f5b56; --card: #ecece8; --accent-strong: #2052eb; position: relative; z-index: 1; align-self: end; justify-self: center; width: calc(100% - 24px); max-width: 480px; margin: 0 12px calc(var(--sab) + 12px); background: #fff; color: var(--text); border-radius: 28px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28); padding: 16px; }
+.wl__actions { display: grid; gap: 10px; }
+.wbtn { position: relative; display: flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 48px; border: 1px solid #8a8782; border-radius: var(--r-md); background: #fff; color: var(--text); font-size: var(--fs-md); font-weight: 600; text-decoration: none; transition: transform .15s var(--ease), background-color .15s, border-color .15s; }
+.wbtn > svg { position: absolute; left: 14px; top: 50%; translate: 0 -50%; }
 .wbtn:hover { background: var(--card); border-color: var(--text); }
 .wbtn:active { transform: scale(.98); }
 .wbtn[aria-busy='true'] { pointer-events: none; opacity: .7; }
-.wl__member { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; min-height: 44px; margin-top: 4px; color: var(--text-2); text-align: center; }
+.wl__member { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; min-height: 44px; color: var(--text-2); text-align: center; font-size: var(--fs-md); }
 .wl__member a { display: inline-flex; align-items: center; min-height: 44px; font-weight: 700; text-decoration: none; }
 .wl__member a:hover { text-decoration: underline; text-underline-offset: 4px; }
-.wl__legal { text-align: center; font-size: var(--fs-sm); line-height: 1.5; color: var(--text-2); text-wrap: balance; }
+.wl__legal { text-align: center; font-size: var(--fs-xs); line-height: 1.4; color: var(--text-2); margin-top: -4px; }
 .wl__legal a { color: inherit; white-space: nowrap; text-underline-offset: 3px; }
 .sep { display: flex; align-items: center; gap: 12px; color: var(--text-2); font-size: var(--fs-sm); }
 .sep::before, .sep::after { content: ''; flex: 1; height: 1px; background: var(--line); }
@@ -526,11 +525,11 @@ a.item, a.stat, a.pcard { text-decoration: none; color: inherit; }
   .wl__title { font-size: clamp(3.25rem, 4.6vw, 4.125rem); max-width: 14ch; }
   .wl__lead { display: block; font-size: 1.25rem; font-weight: 300; line-height: 1.4; color: #fff; max-width: 40ch; text-shadow: 0 1px 14px rgba(0, 0, 0, 0.45); }
   /* Tarjeta de ingreso flotante, translúcida, a la derecha */
-  .wl__sheet { align-self: end; justify-self: end; margin: 0 max(64px, calc((100vw - 1280px) / 2 + 64px)) 14vh 0; max-width: 460px; padding: 28px; border-radius: 32px; background: rgba(255, 255, 255, 0.9); border: 1px solid rgba(255, 255, 255, 0.6); box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25); }
+  .wl__sheet { align-self: end; justify-self: end; width: 100%; margin: 0 max(64px, calc((100vw - 1280px) / 2 + 64px)) 14vh 0; max-width: 460px; padding: 28px; border-radius: 32px; background: rgba(255, 255, 255, 0.9); border: 1px solid rgba(255, 255, 255, 0.6); box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25); }
   @supports (backdrop-filter: blur(1px)) { .wl__sheet { background: rgba(255, 255, 255, 0.78); backdrop-filter: blur(20px) saturate(1.2); -webkit-backdrop-filter: blur(20px) saturate(1.2); } }
-  :root[data-theme='dark'] .wl__sheet { background: rgba(27, 26, 24, 0.82); border-color: rgba(255, 255, 255, 0.14); }
-  .wl__sheet::before { display: none; }
-  .wl__legal { text-wrap: pretty; }
+  .wl__actions { gap: 12px; }
+  .wbtn { min-height: 52px; }
+  .wl__member { min-height: 44px; margin-top: 4px; }
+  .wl__legal { font-size: var(--fs-sm); margin-top: 0; text-wrap: pretty; }
 }
-@media (min-width: 900px) and (prefers-color-scheme: dark) { :root:not([data-theme='light']) .wl__sheet { background: rgba(27, 26, 24, 0.82); border-color: rgba(255, 255, 255, 0.14); } }
 .authcard .card--lg { background: var(--surface); border: 1px solid var(--line); box-shadow: none; }
