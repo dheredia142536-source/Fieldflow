@@ -28,6 +28,11 @@ export function googleBtn(label = t('welcome.google')) {
   return a;
 }
 
+// Opciones de «Soluciones»: una por actor de la cadena agro.
+const SOL = [['leaf', 1], ['users', 2], ['truck', 3], ['tractor', 4], ['search', 5]];
+const solItems = (cls) => h('ul', { class: cls }, SOL.map(([ic, n]) =>
+  h('li', { class: 'sol' }, h('span', { class: 'sol__ic' }, icon(ic, 24)), h('span', { class: 'sol__tx' }, h('strong', null, t(`sol.${n}t`)), h('span', null, t(`sol.${n}d`))))));
+
 let keepOpen = false; // el menú sigue abierto al cambiar de idioma
 
 export default function welcome({ main, rerender }) {
@@ -39,9 +44,11 @@ export default function welcome({ main, rerender }) {
   // Menú de celular: pantalla completa, blanca (los paneles de Soluciones/Recursos/Comunidad se agregan después).
   const closeBtn = h('button', { class: 'wl__dclose', type: 'button', 'aria-label': t('common.close'), onclick: () => toggle(false) }, icon('x', 30));
   const row = (key) => h('button', { class: 'wl__drow', type: 'button' }, h('span', null, t(key)), icon('down', 22));
+  const solRow = h('button', { class: 'wl__drow', type: 'button', 'aria-expanded': 'false', 'aria-controls': 'sol-m', onclick: () => { const v = solPanel.hidden; solPanel.hidden = !v; solRow.setAttribute('aria-expanded', String(v)); solRow.classList.toggle('is-open', v); } }, h('span', null, t('welcome.solutions')), icon('down', 22));
+  const solPanel = h('div', { class: 'wl__dpanel', id: 'sol-m', hidden: true }, solItems('sol-list'));
   const drawer = h('div', { class: 'wl__drawer', hidden: true, role: 'dialog', 'aria-modal': 'true', 'aria-label': t('nav.main') },
     h('div', { class: 'wl__dhead' }, h('span', { class: 'wl__dbrand' }, 'FieldFlow'), h('div', { class: 'wl__dtools' }, langBtn('wl__dlang'), closeBtn)),
-    h('nav', { class: 'wl__dlist', 'aria-label': t('nav.main') }, row('welcome.solutions'), row('welcome.resources'), row('welcome.community')),
+    h('nav', { class: 'wl__dlist', 'aria-label': t('nav.main') }, solRow, solPanel, row('welcome.resources'), row('welcome.community')),
     h('div', { class: 'wl__dcta' },
       h('a', { class: 'btn btn--primary btn--block', href: '#/registro' }, t('login.create')),
       h('a', { class: 'btn btn--block wl__dsec', href: '#/negocio' }, t('welcome.login'))));
@@ -56,12 +63,18 @@ export default function welcome({ main, rerender }) {
 
   // Escritorio: menús «Soluciones / Recursos / Comunidad» (sus paneles se agregan después).
   const navBtn = (key) => h('button', { class: 'wl__navbtn', type: 'button' }, t(key), icon('down', 16));
+  const pop = h('div', { class: 'wl__pop', id: 'sol-d', hidden: true }, solItems('sol-list'));
+  const solBtn = h('button', { class: 'wl__navbtn', type: 'button', 'aria-expanded': 'false', 'aria-controls': 'sol-d', onclick: (e) => { e.stopPropagation(); togglePop(pop.hidden); } }, t('welcome.solutions'), icon('down', 16));
+  function togglePop(v) { pop.hidden = !v; solBtn.setAttribute('aria-expanded', String(v)); solBtn.classList.toggle('is-open', v); }
+  const awayPop = (e) => { if (!pop.hidden && !pop.contains(e.target)) togglePop(false); };
+  const escPop = (e) => { if (e.key === 'Escape' && !pop.hidden) { togglePop(false); solBtn.focus(); } };
+  document.addEventListener('click', awayPop); document.addEventListener('keydown', escPop);
   main.append(h('main', { class: 'wl', id: 'main' },
     h('div', { class: 'wl__photo', role: 'img', 'aria-label': t('welcome.photo') }),
     h('div', { class: 'wl__stage' },
       h('header', { class: 'wl__top' },
         h('span', { class: 'wl__brand' }, 'FieldFlow'),
-        h('nav', { class: 'wl__nav', 'aria-label': t('nav.main') }, navBtn('welcome.solutions'), navBtn('welcome.resources'), navBtn('welcome.community')),
+        h('nav', { class: 'wl__nav', 'aria-label': t('nav.main') }, h('div', { class: 'wl__navitem' }, solBtn, pop), navBtn('welcome.resources'), navBtn('welcome.community')),
         h('div', { class: 'wl__tools' },
           langBtn('wl__lang'),
           h('a', { class: 'wl__login', href: '#/negocio' }, t('welcome.login')),
@@ -79,5 +92,5 @@ export default function welcome({ main, rerender }) {
         h('p', { class: 'wl__legal' }, t('welcome.agree'), ' ', h('a', { href: '/legal.html', target: '_blank', rel: 'noopener' }, t('welcome.terms')))))));
   main.firstChild.append(drawer);
   if (keepOpen) { keepOpen = false; toggle(true); }
-  return () => { document.removeEventListener('keydown', esc); document.body.style.overflow = ''; };
+  return () => { document.removeEventListener('keydown', esc); document.removeEventListener('click', awayPop); document.removeEventListener('keydown', escPop); document.body.style.overflow = ''; };
 }
