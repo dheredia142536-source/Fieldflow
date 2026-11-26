@@ -1,9 +1,9 @@
 import { get, post } from '../api.js';
 import { h, field, busy } from '../ui.js';
-import { icon, logo, googleG } from '../icons.js';
+import { icon, logo } from '../icons.js';
 import { t } from '../i18n.js';
 import { state } from '../state.js';
-import { googleHref, takeAuthError } from './welcome.js';
+import { googleBtn, takeAuthError } from './welcome.js';
 
 export default function login({ main, go }) {
   const problem = takeAuthError();
@@ -31,7 +31,7 @@ export default function login({ main, go }) {
     h('a', { class: 'brand', href: '#/' }, logo(36), 'FieldFlow'),
     h('div', null, h('h1', null, t('login.title')), h('p', { class: 'muted', style: 'margin-top:6px' }, t('login.lead'))),
     h('div', { class: 'card card--lg stack' },
-      h('a', { class: 'wbtn', href: googleHref() }, googleG(22), h('span', null, t('login.google'))),
+      googleBtn(t('login.google')),
       h('div', { class: 'sep' }, h('span', null, t('login.or'))),
       form),
     h('p', { class: 'center' }, t('login.noAccount'), ' ', h('a', { href: '#/registro' }, t('login.create'))),

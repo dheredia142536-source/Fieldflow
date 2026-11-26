@@ -488,22 +488,26 @@ a.item, a.stat, a.pcard { text-decoration: none; color: inherit; }
 .wl__menu a { display: flex; align-items: center; min-height: 48px; padding: 0 14px; border-radius: var(--r-md); color: var(--text); font-weight: 600; text-decoration: none; }
 .wl__menu a:hover { background: var(--card); }
 .wl__title { font-size: clamp(2.5rem, 10.4vw, 4.125rem); font-weight: 600; letter-spacing: -0.06em; line-height: 1.05; color: #fff; max-width: 13ch; text-shadow: 0 2px 22px rgba(0, 0, 0, 0.28); }
-.wl__sheet { position: relative; z-index: 1; align-self: end; justify-self: center; width: 100%; max-width: 560px; background: var(--surface); color: var(--text); border-radius: 40px 40px 0 0; padding: 32px calc(var(--sar) + 28px) calc(var(--sab) + 28px) calc(var(--sal) + 28px); }
-.wl__actions { display: grid; gap: 14px; max-width: 480px; margin: 0 auto; }
-.wbtn { position: relative; display: flex; align-items: center; justify-content: center; min-height: 52px; padding: 0 52px; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); color: var(--text); font-size: var(--fs-lg); font-weight: 600; text-decoration: none; transition: transform .15s var(--ease), background-color .15s; }
-.wbtn > svg { position: absolute; left: 18px; top: 50%; translate: 0 -50%; }
-.wbtn:hover { background: var(--card); }
+.wl__sheet { position: relative; z-index: 1; align-self: end; justify-self: center; width: 100%; max-width: 560px; background: var(--surface); color: var(--text); border-radius: 32px 32px 0 0; box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.12); padding: 12px calc(var(--sar) + 24px) calc(var(--sab) + 24px) calc(var(--sal) + 24px); }
+.wl__sheet::before { content: ''; display: block; width: 40px; height: 4px; margin: 0 auto 20px; border-radius: 2px; background: var(--line-strong); }
+.wl__actions { display: grid; gap: 12px; max-width: 440px; margin: 0 auto; }
+.wbtn { position: relative; display: flex; align-items: center; justify-content: center; min-height: 52px; padding: 0 52px; border: 1px solid #8a8782; border-radius: var(--r-md); background: var(--surface); color: var(--text); font-size: var(--fs-md); font-weight: 600; text-decoration: none; transition: transform .15s var(--ease), background-color .15s, border-color .15s; }
+.wbtn > svg { position: absolute; left: 16px; top: 50%; translate: 0 -50%; }
+.wbtn:hover { background: var(--card); border-color: var(--text); }
 .wbtn:active { transform: scale(.98); }
-.wl__member { text-align: center; margin-top: 6px; color: var(--text-2); }
-.wl__member a { font-weight: 700; text-decoration: none; }
-.wl__legal { text-align: center; font-size: var(--fs-sm); line-height: 1.5; color: var(--text-2); }
-.wl__legal a { color: inherit; }
+.wbtn[aria-busy='true'] { pointer-events: none; opacity: .7; }
+.wl__member { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; min-height: 44px; margin-top: 4px; color: var(--text-2); text-align: center; }
+.wl__member a { display: inline-flex; align-items: center; min-height: 44px; font-weight: 700; text-decoration: none; }
+.wl__member a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.wl__legal { text-align: center; font-size: var(--fs-sm); line-height: 1.5; color: var(--text-2); text-wrap: balance; }
+.wl__legal a { color: inherit; white-space: nowrap; text-underline-offset: 3px; }
 .sep { display: flex; align-items: center; gap: 12px; color: var(--text-2); font-size: var(--fs-sm); }
 .sep::before, .sep::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 /* Los botones de ingreso dentro de tarjetas (login, registro) conservan el mismo estilo, con el logotipo a la izquierda */
 @media (min-width: 900px) {
   .wl__photo { background-image: url('/img/welcome-desktop.webp'); background-position: center; }
   .wl__stage { padding-top: 36px; padding-left: 64px; padding-right: 64px; }
+  .wl__sheet { padding-top: 16px; padding-bottom: 32px; border-radius: 32px 32px 0 0; }
   .wl__title { max-width: 14ch; }
 }
 .authcard .card--lg { background: var(--surface); border: 1px solid var(--line); box-shadow: none; }

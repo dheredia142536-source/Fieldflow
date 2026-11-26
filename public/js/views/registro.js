@@ -1,8 +1,8 @@
 // Registro de un negocio nuevo: datos → código por correo → cuenta lista.
 import { get, post } from '../api.js';
 import { h, field, busy, clear } from '../ui.js';
-import { icon, logo, googleG } from '../icons.js';
-import { googleHref } from './welcome.js';
+import { icon, logo } from '../icons.js';
+import { googleBtn } from './welcome.js';
 import { t, getLang } from '../i18n.js';
 import { state } from '../state.js';
 
@@ -42,7 +42,7 @@ export default function registro({ main, go }) {
     const acepta = h('input', { type: 'checkbox', required: true });
     const btn = h('button', { class: 'btn btn--primary btn--block', type: 'submit' }, t('reg.send'));
     const form = h('form', { class: 'stack', novalidate: true },
-      h('a', { class: 'wbtn', href: googleHref() }, googleG(22), h('span', null, t('login.google'))),
+      googleBtn(t('login.google')),
       h('div', { class: 'sep' }, h('span', null, t('login.or'))),
       field(t('reg.company'), empresa),
       h('div', { class: 'grid2', style: 'align-items:start' }, field(t('reg.name'), nombre), field(t('reg.phone'), telefono, t('reg.phoneHint'))),
