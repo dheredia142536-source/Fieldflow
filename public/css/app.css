@@ -474,31 +474,36 @@ a.item, a.stat, a.pcard { text-decoration: none; color: inherit; }
 @media (min-width: 420px) { .hide-xs { display: inline-flex; } }
 
 /* ───────────────────────── Inicio (pantalla de bienvenida) ─────────────────────────
-   Lienzo plano de azul eléctrico (sin degradados ni brillos). La foto se activa con --wl-img cuando exista /img/welcome.webp. */
-.wl { min-height: 100dvh; display: grid; grid-template-rows: 1fr auto; background: var(--blue); color: var(--blush); }
-.wl__stage { position: relative; display: grid; grid-template-rows: auto 1fr; padding: calc(var(--sat) + 28px) calc(var(--sar) + 24px) 40px calc(var(--sal) + 24px); background-color: var(--blue); background-image: var(--wl-img, none); background-size: cover; background-position: center; }
+   Foto a pantalla completa (una por formato), titular encima y hoja blanca de ingreso abajo. Sin degradados. */
+.wl { position: relative; min-height: 100dvh; display: grid; grid-template: 'all' 1fr / 1fr; background: var(--blue); color: #fff; overflow: hidden; }
+.wl > * { grid-area: all; }
+.wl__photo { background: var(--blue) url('/img/welcome-mobile.webp') 60% center / cover no-repeat; }
+.wl__stage { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 28px; padding: calc(var(--sat) + 22px) calc(var(--sar) + 28px) 0 calc(var(--sal) + 28px); max-width: 1280px; width: 100%; margin: 0 auto; align-self: start; }
 .wl__top { display: flex; align-items: center; justify-content: space-between; }
-.wl__brand { font-size: 1.75rem; font-weight: 500; letter-spacing: -0.04em; color: #fff; }
-.wl__lang { min-height: 44px; min-width: 44px; padding: 0 8px; font-weight: 600; font-size: var(--fs-md); color: #fff; border-radius: var(--r-md); }
-.wl__copy { align-self: center; display: grid; gap: 20px; padding-top: 24px; max-width: 760px; }
-.wl__title { font-size: var(--fs-display); font-weight: 500; letter-spacing: -0.06em; line-height: 1.05; color: var(--blush); }
-.wl__lead { font-size: 1.25rem; font-weight: 300; line-height: 1.4; color: #fff; max-width: 34ch; }
-.wl__sheet { background: var(--surface); color: var(--text); border-radius: 32px 32px 0 0; padding: 32px calc(var(--sar) + 24px) calc(var(--sab) + 28px) calc(var(--sal) + 24px); }
-.wl__actions { display: grid; gap: 12px; max-width: 440px; margin: 0 auto; }
-.wbtn { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 48px; padding: 0 20px; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); color: var(--text); font-size: var(--fs-lg); font-weight: 600; text-decoration: none; transition: transform .15s var(--ease), background-color .15s; }
+.wl__brand { font-size: 1.875rem; font-weight: 600; letter-spacing: -0.045em; color: #fff; text-shadow: 0 1px 14px rgba(0, 0, 0, 0.25); }
+.wl__tools { position: relative; display: flex; align-items: center; gap: 12px; }
+.wl__lang, .wl__burger { min-height: 48px; min-width: 48px; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 600; font-size: var(--fs-lg); border-radius: var(--r-md); text-shadow: 0 1px 12px rgba(0, 0, 0, 0.3); }
+.wl__burger svg { stroke-width: 2.2; filter: drop-shadow(0 1px 6px rgba(0, 0, 0, 0.3)); }
+.wl__menu { position: absolute; right: 0; top: 56px; min-width: 220px; display: grid; padding: 8px; background: var(--surface); color: var(--text); border-radius: 16px; box-shadow: var(--shadow-pop); }
+.wl__menu a { display: flex; align-items: center; min-height: 48px; padding: 0 14px; border-radius: var(--r-md); color: var(--text); font-weight: 600; text-decoration: none; }
+.wl__menu a:hover { background: var(--card); }
+.wl__title { font-size: clamp(2.5rem, 10.4vw, 4.125rem); font-weight: 600; letter-spacing: -0.06em; line-height: 1.05; color: #fff; max-width: 13ch; text-shadow: 0 2px 22px rgba(0, 0, 0, 0.28); }
+.wl__sheet { position: relative; z-index: 1; align-self: end; justify-self: center; width: 100%; max-width: 560px; background: var(--surface); color: var(--text); border-radius: 40px 40px 0 0; padding: 32px calc(var(--sar) + 28px) calc(var(--sab) + 28px) calc(var(--sal) + 28px); }
+.wl__actions { display: grid; gap: 14px; max-width: 480px; margin: 0 auto; }
+.wbtn { position: relative; display: flex; align-items: center; justify-content: center; min-height: 52px; padding: 0 52px; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); color: var(--text); font-size: var(--fs-lg); font-weight: 600; text-decoration: none; transition: transform .15s var(--ease), background-color .15s; }
+.wbtn > svg { position: absolute; left: 18px; top: 50%; translate: 0 -50%; }
 .wbtn:hover { background: var(--card); }
 .wbtn:active { transform: scale(.98); }
-.wbtn svg { flex: none; }
-.wl__member { text-align: center; margin-top: 8px; color: var(--text-2); }
-.wl__member a { font-weight: 600; }
+.wl__member { text-align: center; margin-top: 6px; color: var(--text-2); }
+.wl__member a { font-weight: 700; text-decoration: none; }
 .wl__legal { text-align: center; font-size: var(--fs-sm); line-height: 1.5; color: var(--text-2); }
 .wl__legal a { color: inherit; }
 .sep { display: flex; align-items: center; gap: 12px; color: var(--text-2); font-size: var(--fs-sm); }
 .sep::before, .sep::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+/* Los botones de ingreso dentro de tarjetas (login, registro) conservan el mismo estilo, con el logotipo a la izquierda */
 @media (min-width: 900px) {
-  .wl { grid-template-rows: none; grid-template-columns: 1fr minmax(440px, 40%); }
-  .wl__stage { padding: 40px 64px 64px; }
-  .wl__sheet { border-radius: 0; display: grid; align-content: center; padding: 48px; }
-  .wl__actions { width: 100%; }
+  .wl__photo { background-image: url('/img/welcome-desktop.webp'); background-position: center; }
+  .wl__stage { padding-top: 36px; padding-left: 64px; padding-right: 64px; }
+  .wl__title { max-width: 14ch; }
 }
 .authcard .card--lg { background: var(--surface); border: 1px solid var(--line); box-shadow: none; }
