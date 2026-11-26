@@ -43,15 +43,22 @@ export default function welcome({ main, rerender }) {
   document.addEventListener('click', away);
   document.addEventListener('keydown', esc);
 
+  // Escritorio: menús «Soluciones / Recursos / Comunidad» (sus paneles se agregan después).
+  const navBtn = (key) => h('button', { class: 'wl__navbtn', type: 'button' }, t(key), icon('down', 16));
   main.append(h('main', { class: 'wl', id: 'main' },
     h('div', { class: 'wl__photo', role: 'img', 'aria-label': t('welcome.photo') }),
     h('div', { class: 'wl__stage' },
       h('header', { class: 'wl__top' },
         h('span', { class: 'wl__brand' }, 'FieldFlow'),
+        h('nav', { class: 'wl__nav', 'aria-label': t('nav.main') }, navBtn('welcome.solutions'), navBtn('welcome.resources'), navBtn('welcome.community')),
         h('div', { class: 'wl__tools' },
           h('button', { class: 'wl__lang', type: 'button', lang: other, 'aria-label': other === 'en' ? 'English' : 'Español', onclick: () => { setLang(other); rerender(); } }, other.toUpperCase()),
+          h('a', { class: 'wl__login', href: '#/negocio' }, t('welcome.login')),
+          h('a', { class: 'wl__create', href: '#/registro' }, t('login.create')),
           burger, menu)),
-      h('h1', { class: 'wl__title' }, t('welcome.title'))),
+      h('div', { class: 'wl__copy' },
+        h('h1', { class: 'wl__title' }, t('welcome.title')),
+        h('p', { class: 'wl__lead' }, t('welcome.lead')))),
     h('section', { class: 'wl__sheet', 'aria-label': t('welcome.login') },
       h('div', { class: 'wl__actions' },
         problem ? h('div', { class: 'err', role: 'alert' }, problem) : null,

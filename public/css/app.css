@@ -504,10 +504,33 @@ a.item, a.stat, a.pcard { text-decoration: none; color: inherit; }
 .sep { display: flex; align-items: center; gap: 12px; color: var(--text-2); font-size: var(--fs-sm); }
 .sep::before, .sep::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 /* Los botones de ingreso dentro de tarjetas (login, registro) conservan el mismo estilo, con el logotipo a la izquierda */
+/* Elementos que sólo existen en escritorio */
+.wl__nav, .wl__login, .wl__create, .wl__lead { display: none; }
+.wl__copy { display: grid; gap: 16px; }
 @media (min-width: 900px) {
   .wl__photo { background-image: url('/img/welcome-desktop.webp'); background-position: center; }
-  .wl__stage { padding-top: 36px; padding-left: 64px; padding-right: 64px; }
-  .wl__sheet { padding-top: 16px; padding-bottom: 32px; border-radius: 32px 32px 0 0; }
-  .wl__title { max-width: 14ch; }
+  .wl__stage { align-self: stretch; min-height: 100dvh; padding: 28px 64px 0; }
+  .wl__top { gap: 48px; }
+  .wl__nav { display: flex; align-items: center; gap: 8px; margin-right: auto; margin-left: 32px; }
+  .wl__navbtn { display: inline-flex; align-items: center; gap: 4px; min-height: 48px; padding: 0 14px; border-radius: var(--r-md); color: #fff; font-size: var(--fs-md); font-weight: 600; text-shadow: 0 1px 12px rgba(0, 0, 0, 0.45); }
+  .wl__navbtn:hover { background: rgba(255, 255, 255, 0.16); }
+  .wl__navbtn svg { opacity: .85; }
+  .wl__tools { gap: 8px; }
+  .wl__login { display: inline-flex; align-items: center; min-height: 48px; padding: 0 14px; border-radius: var(--r-md); color: #fff; font-weight: 600; text-decoration: none; text-shadow: 0 1px 12px rgba(0, 0, 0, 0.45); }
+  .wl__login:hover { background: rgba(255, 255, 255, 0.16); }
+  .wl__create { display: inline-flex; align-items: center; min-height: 48px; padding: 0 24px; margin-left: 8px; border-radius: 16px; background: #fff; color: var(--charcoal); font-weight: 600; text-decoration: none; transition: transform .15s var(--ease), background-color .15s; }
+  .wl__create:hover { background: #f1f1ee; }
+  .wl__create:active { transform: scale(.97); }
+  .wl__burger { display: none; }
+  .wl__copy { margin-top: auto; padding-bottom: 14vh; max-width: 760px; gap: 20px; }
+  .wl__title { font-size: clamp(3.25rem, 4.6vw, 4.125rem); max-width: 14ch; }
+  .wl__lead { display: block; font-size: 1.25rem; font-weight: 300; line-height: 1.4; color: #fff; max-width: 40ch; text-shadow: 0 1px 14px rgba(0, 0, 0, 0.45); }
+  /* Tarjeta de ingreso flotante, translúcida, a la derecha */
+  .wl__sheet { align-self: end; justify-self: end; margin: 0 max(64px, calc((100vw - 1280px) / 2 + 64px)) 14vh 0; max-width: 460px; padding: 28px; border-radius: 32px; background: rgba(255, 255, 255, 0.9); border: 1px solid rgba(255, 255, 255, 0.6); box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25); }
+  @supports (backdrop-filter: blur(1px)) { .wl__sheet { background: rgba(255, 255, 255, 0.78); backdrop-filter: blur(20px) saturate(1.2); -webkit-backdrop-filter: blur(20px) saturate(1.2); } }
+  :root[data-theme='dark'] .wl__sheet { background: rgba(27, 26, 24, 0.82); border-color: rgba(255, 255, 255, 0.14); }
+  .wl__sheet::before { display: none; }
+  .wl__legal { text-wrap: pretty; }
 }
+@media (min-width: 900px) and (prefers-color-scheme: dark) { :root:not([data-theme='light']) .wl__sheet { background: rgba(27, 26, 24, 0.82); border-color: rgba(255, 255, 255, 0.14); } }
 .authcard .card--lg { background: var(--surface); border: 1px solid var(--line); box-shadow: none; }
