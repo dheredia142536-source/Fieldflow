@@ -484,9 +484,6 @@ a.item, a.stat, a.pcard { text-decoration: none; color: inherit; }
 .wl__tools { position: relative; display: flex; align-items: center; gap: 12px; }
 .wl__lang, .wl__burger { min-height: 48px; min-width: 48px; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 600; font-size: var(--fs-lg); border-radius: var(--r-md); text-shadow: 0 1px 12px rgba(0, 0, 0, 0.3); }
 .wl__burger svg { stroke-width: 2.2; filter: drop-shadow(0 1px 6px rgba(0, 0, 0, 0.3)); }
-.wl__menu { position: absolute; right: 0; top: 56px; min-width: 220px; display: grid; padding: 8px; background: var(--surface); color: var(--text); border-radius: 16px; box-shadow: var(--shadow-pop); }
-.wl__menu a { display: flex; align-items: center; min-height: 48px; padding: 0 14px; border-radius: var(--r-md); color: var(--text); font-weight: 600; text-decoration: none; }
-.wl__menu a:hover { background: var(--card); }
 .wl__title { font-size: clamp(2.5rem, 10.4vw, 4.125rem); font-weight: 600; letter-spacing: -0.06em; line-height: 1.05; color: #fff; max-width: 13ch; text-shadow: 0 2px 22px rgba(0, 0, 0, 0.28); }
 .wl__sheet { --surface: #fff; --text: #262320; --text-2: #5f5b56; --card: #ecece8; --accent-strong: #2052eb; position: relative; z-index: 1; align-self: end; justify-self: center; width: calc(100% - 24px); max-width: 480px; margin: 0 12px calc(var(--sab) + 12px); background: #fff; color: var(--text); border-radius: 28px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28); padding: 16px; }
 .wl__actions { display: grid; gap: 10px; }
@@ -503,6 +500,20 @@ a.item, a.stat, a.pcard { text-decoration: none; color: inherit; }
 .sep { display: flex; align-items: center; gap: 12px; color: var(--text-2); font-size: var(--fs-sm); }
 .sep::before, .sep::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 /* Los botones de ingreso dentro de tarjetas (login, registro) conservan el mismo estilo, con el logotipo a la izquierda */
+/* Menú de celular (pantalla completa) */
+.wl__drawer { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; gap: 32px; padding: calc(var(--sat) + 22px) calc(var(--sar) + 28px) calc(var(--sab) + 28px) calc(var(--sal) + 28px); background: #fff; color: var(--charcoal); overflow-y: auto; --text: #262320; --text-2: #5f5b56; --accent-strong: #2052eb; --on-accent: #fff; }
+.wl__dhead { display: flex; align-items: center; justify-content: space-between; min-height: 48px; }
+.wl__dbrand { font-size: 1.875rem; font-weight: 600; letter-spacing: -0.045em; }
+.wl__dtools { display: flex; align-items: center; gap: 12px; }
+.wl__dlang, .wl__dclose { min-width: 48px; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--r-md); font-weight: 600; font-size: var(--fs-md); color: var(--charcoal); }
+.wl__dlist { display: grid; }
+.wl__drow { display: flex; align-items: center; justify-content: space-between; min-height: 64px; border-bottom: 1px solid var(--line); font-size: 1.5rem; font-weight: 500; text-align: left; color: var(--charcoal); }
+.wl__drow svg { color: var(--text-2); }
+.wl__drow:active { background: #f4f4f1; }
+.wl__dcta { display: grid; gap: 12px; }
+.wl__dsec { background: #fff; border: 1px solid #8a8782; color: var(--charcoal); }
+@media (min-width: 900px) { .wl__drawer { display: none !important; } }
+
 /* Elementos que sólo existen en escritorio */
 .wl__nav, .wl__login, .wl__create, .wl__lead { display: none; }
 .wl__copy { display: grid; gap: 16px; }

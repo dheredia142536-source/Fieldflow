@@ -28,19 +28,30 @@ export function googleBtn(label = t('welcome.google')) {
   return a;
 }
 
+let keepOpen = false; // el menú sigue abierto al cambiar de idioma
+
 export default function welcome({ main, rerender }) {
   const other = getLang() === 'es' ? 'en' : 'es';
   const problem = takeAuthError();
   let open = false;
-  const menu = h('nav', { class: 'wl__menu', hidden: true, 'aria-label': t('nav.main') },
-    h('a', { href: '#/negocio' }, t('welcome.login')),
-    h('a', { href: '#/registro' }, t('login.create')),
-    h('a', { href: '/legal.html', target: '_blank', rel: 'noopener' }, t('welcome.terms')));
-  const burger = h('button', { class: 'wl__burger', type: 'button', 'aria-label': t('nav.main'), 'aria-expanded': 'false', onclick: (e) => { e.stopPropagation(); toggle(!open); } }, icon('menu', 30));
-  function toggle(v) { open = v; menu.hidden = !v; burger.setAttribute('aria-expanded', String(v)); }
-  const away = (e) => { if (open && !menu.contains(e.target)) toggle(false); };
-  const esc = (e) => { if (e.key === 'Escape' && open) { toggle(false); burger.focus(); } };
-  document.addEventListener('click', away);
+  const langBtn = (cls) => h('button', { class: cls, type: 'button', lang: other, 'aria-label': other === 'en' ? 'English' : 'Español', onclick: () => { keepOpen = open; setLang(other); rerender(); } }, other.toUpperCase());
+
+  // Menú de celular: pantalla completa, blanca (los paneles de Soluciones/Recursos/Comunidad se agregan después).
+  const closeBtn = h('button', { class: 'wl__dclose', type: 'button', 'aria-label': t('common.close'), onclick: () => toggle(false) }, icon('x', 30));
+  const row = (key) => h('button', { class: 'wl__drow', type: 'button' }, h('span', null, t(key)), icon('down', 22));
+  const drawer = h('div', { class: 'wl__drawer', hidden: true, role: 'dialog', 'aria-modal': 'true', 'aria-label': t('nav.main') },
+    h('div', { class: 'wl__dhead' }, h('span', { class: 'wl__dbrand' }, 'FieldFlow'), h('div', { class: 'wl__dtools' }, langBtn('wl__dlang'), closeBtn)),
+    h('nav', { class: 'wl__dlist', 'aria-label': t('nav.main') }, row('welcome.solutions'), row('welcome.resources'), row('welcome.community')),
+    h('div', { class: 'wl__dcta' },
+      h('a', { class: 'btn btn--primary btn--block', href: '#/registro' }, t('login.create')),
+      h('a', { class: 'btn btn--block wl__dsec', href: '#/negocio' }, t('welcome.login'))));
+  const burger = h('button', { class: 'wl__burger', type: 'button', 'aria-label': t('nav.main'), 'aria-expanded': 'false', 'aria-haspopup': 'dialog', onclick: () => toggle(true) }, icon('menu', 30));
+  function toggle(v) {
+    open = v; drawer.hidden = !v; burger.setAttribute('aria-expanded', String(v));
+    document.body.style.overflow = v ? 'hidden' : '';
+    if (v) closeBtn.focus(); else burger.focus();
+  }
+  const esc = (e) => { if (e.key === 'Escape' && open) toggle(false); };
   document.addEventListener('keydown', esc);
 
   // Escritorio: menús «Soluciones / Recursos / Comunidad» (sus paneles se agregan después).
@@ -52,10 +63,10 @@ export default function welcome({ main, rerender }) {
         h('span', { class: 'wl__brand' }, 'FieldFlow'),
         h('nav', { class: 'wl__nav', 'aria-label': t('nav.main') }, navBtn('welcome.solutions'), navBtn('welcome.resources'), navBtn('welcome.community')),
         h('div', { class: 'wl__tools' },
-          h('button', { class: 'wl__lang', type: 'button', lang: other, 'aria-label': other === 'en' ? 'English' : 'Español', onclick: () => { setLang(other); rerender(); } }, other.toUpperCase()),
+          langBtn('wl__lang'),
           h('a', { class: 'wl__login', href: '#/negocio' }, t('welcome.login')),
           h('a', { class: 'wl__create', href: '#/registro' }, t('login.create')),
-          burger, menu)),
+          burger)),
       h('div', { class: 'wl__copy' },
         h('h1', { class: 'wl__title' }, t('welcome.title')),
         h('p', { class: 'wl__lead' }, t('welcome.lead')))),
@@ -66,5 +77,7 @@ export default function welcome({ main, rerender }) {
         h('a', { class: 'wbtn', href: '#/registro' }, icon('mail', 24), h('span', null, t('welcome.email'))),
         h('p', { class: 'wl__member' }, t('welcome.member'), ' ', h('a', { href: '#/negocio' }, t('welcome.login'))),
         h('p', { class: 'wl__legal' }, t('welcome.agree'), ' ', h('a', { href: '/legal.html', target: '_blank', rel: 'noopener' }, t('welcome.terms')))))));
-  return () => { document.removeEventListener('click', away); document.removeEventListener('keydown', esc); };
+  main.firstChild.append(drawer);
+  if (keepOpen) { keepOpen = false; toggle(true); }
+  return () => { document.removeEventListener('keydown', esc); document.body.style.overflow = ''; };
 }
