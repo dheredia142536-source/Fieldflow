@@ -39,17 +39,25 @@ PWA instalable (iPhone incl. Pro Max y compactos, Android, iPad, laptop; claro/o
 | `APP_SECRET` | secreto de la app de Meta |
 | `VERIFY_TOKEN` | texto que tú inventas |
 | `WHATSAPP_PUBLIC_NUMBER` | número con país, sin `+` |
-| `RESEND_API_KEY` | clave de Resend (correo del código de verificación) |
-| `MAIL_FROM` | remitente verificado, p. ej. `FieldFlow <no-reply@tudominio.com>` |
+| `BREVO_API_KEY` | clave v3 de la API de Brevo (códigos de verificación y recuperar contraseña) |
+| `MAIL_FROM` | remitente verificado en Brevo, p. ej. `FieldFlow <no-reply@tudominio.com>` |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | ingreso con Google (ver 2c) |
+| `APP_URL` | (opcional) dirección pública, p. ej. `https://fieldflow-six-topaz.vercel.app` |
 
 5. **Vuelve a desplegar** (Deployments → ⋯ → Redeploy): las variables nuevas solo aplican a despliegues nuevos.
 6. Entra a `https://tu-dominio.com/#/negocio` con `ADMIN_EMAIL`/`ADMIN_PASSWORD` → Ajustes → **Cargar datos de ejemplo** (opcional) → **Probar asistente**.
 
-### 2b. Registro de usuarios y correo (Resend)
+### 2b. Registro, recuperar contraseña y correo (Brevo)
 Cualquier negocio puede crear su cuenta en `/#/registro`: empresa, nombre, correo, teléfono, contraseña, tipo de negocio, ubicación, fines y aceptación de términos. Se envía un **código de 6 dígitos** al correo (vence en 15 min, 5 intentos, reenvío cada 60 s); la cuenta se crea solo al verificarlo. **Cada negocio es independiente**: ve únicamente sus clientes, citas, chats y ajustes.
-1. Crea una cuenta en resend.com → **Domains → Add Domain** (tu dominio de Hostinger) y agrega en el DNS de Hostinger los registros que Resend indica (SPF/DKIM). Sin dominio verificado, Resend solo entrega al correo del dueño de la cuenta.
-2. **API Keys → Create** y copia la clave a `RESEND_API_KEY`; define `MAIL_FROM` con un remitente de ese dominio. Redeploy.
-3. Sin esas dos variables el registro responde «el envío de correos aún no está configurado» (no se crea nada).
+1. Crea una cuenta en brevo.com → **Senders, domains & dedicated IPs → Senders → Add a sender** con el correo que enviará los códigos y confírmalo desde ese buzón (con dominio propio, autentícalo también con SPF/DKIM/DMARC para que no caiga en spam).
+2. **SMTP & API → API Keys → Generate a new API key** y copia la clave a `BREVO_API_KEY`; define `MAIL_FROM` con el remitente ya verificado (`FieldFlow <correo@dominio>`). Redeploy.
+3. Sin esas dos variables el registro y la recuperación responden «el envío de correos aún no está configurado» (no se crea nada).
+- **Recuperar contraseña:** `/#/recuperar` envía un código de 6 dígitos (15 min, 5 intentos) por Brevo y deja crear la clave nueva. No revela si el correo existe.
+
+### 2c. Ingreso con Google
+1. En console.cloud.google.com crea un proyecto → **APIs y servicios → Pantalla de consentimiento de OAuth** (externo, nombre FieldFlow) → **Credenciales → Crear credenciales → ID de cliente de OAuth → Aplicación web**.
+2. En **URI de redireccionamiento autorizados** agrega exactamente `https://TU-DOMINIO/api/auth/google/callback` (p. ej. `https://fieldflow-six-topaz.vercel.app/api/auth/google/callback`).
+3. Copia el ID y el secreto a `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` en Vercel y redeploy. Quien entra con Google por primera vez recibe una cuenta con un negocio inicial (cámbiale el nombre en Ajustes); su correo debe estar verificado por Google. Puede crear una contraseña con «¿Olvidaste tu contraseña?».
 - El correo `ADMIN_EMAIL` sigue entrando con `ADMIN_PASSWORD`: es el **negocio principal** y es el único que usa el WhatsApp de la plataforma (variables `WHATSAPP_*`). Los demás negocios usan el simulador hasta que exista WhatsApp por negocio.
 - `/legal.html` es un **borrador** de términos y datos personales: complétalo con tu contacto y que lo revise un abogado.
 - Primera actualización a esta versión: la migración `20261121…multi_negocio.sql` **reconstruye las tablas** (borra los datos de prueba). Hazlo antes de tener clientes reales.
@@ -90,4 +98,4 @@ Node ≥ 22.13. `npm run dev` → http://localhost:8888 (`admin@fieldflow.test` 
 
 **Not verified / not built:** real Vercel/Neon/Meta/Groq runs; reminders, multi-tenant, payments, roles, login lockout. Fixed UTC-5 timezone.
 
-**Sign-up (new):** `/#/registro` collects company, name, email, phone, password, business type, location, purposes and terms; a 6-digit code is emailed via Resend (`RESEND_API_KEY`, `MAIL_FROM`) and the account is created only after verification. Each business is isolated (own customers, bookings, chats, settings). `ADMIN_EMAIL` is the principal business and owns the platform WhatsApp number. The `multi_negocio` migration rebuilds tables (pre-launch data is wiped). `/legal.html` is a draft for legal review.
+**Sign-up (new):** `/#/registro` collects company, name, email, phone, password, business type, location, purposes and terms; a 6-digit code is emailed via Brevo (`BREVO_API_KEY`, `MAIL_FROM`); `/#/recuperar` resets a password the same way; Google sign-in uses `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` and the account is created only after verification. Each business is isolated (own customers, bookings, chats, settings). `ADMIN_EMAIL` is the principal business and owns the platform WhatsApp number. The `multi_negocio` migration rebuilds tables (pre-launch data is wiped). `/legal.html` is a draft for legal review.

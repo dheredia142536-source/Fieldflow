@@ -10,6 +10,7 @@ const P = {
   list: '<path d="M8.5 6.5H20M8.5 12H20M8.5 17.5H20"/><circle cx="4.7" cy="6.5" r="1"/><circle cx="4.7" cy="12" r="1"/><circle cx="4.7" cy="17.5" r="1"/>',
   gantt: '<path d="M4 6.5h8M8 12h10M6 17.5h7"/>',
   command: '<path d="M9 9h6v6H9zM9 9V6.5A2.5 2.5 0 1 0 6.5 9H9zM15 9h2.5A2.5 2.5 0 1 0 15 6.5zM9 15H6.5A2.5 2.5 0 1 0 9 17.5zM15 15v2.5a2.5 2.5 0 1 0 2.5-2.5z"/>',
+  mail: '<rect x="3.5" y="5.5" width="17" height="13" rx="2.5"/><path d="m4.5 7.5 7.5 6 7.5-6"/>',
   home: '<path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
   calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
   chat: '<path d="M4 5.5h16v11H10l-5 4v-4H4z"/>',
@@ -78,7 +79,7 @@ export function logo(size = 32) {
   s.setAttribute('height', size);
   s.setAttribute('viewBox', '0 0 64 64');
   s.setAttribute('aria-hidden', 'true');
-  s.innerHTML = '<rect width="64" height="64" rx="16" fill="#0096f7"/><path d="M17 43C21 27 31 19 48 19C47 36 38 46 24 46" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 49C23 39 29 33 37 29" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>';
+  s.innerHTML = '<rect width="64" height="64" rx="16" fill="#2052eb"/><path d="M17 43C21 27 31 19 48 19C47 36 38 46 24 46" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 49C23 39 29 33 37 29" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>';
   return s;
 }
 
@@ -91,5 +92,17 @@ export function emptyArt() {
     + '<g fill="none" stroke="currentColor" stroke-opacity=".45" stroke-width="2" stroke-linecap="round">'
     + '<path d="M6 70C50 56 110 84 194 62"/><path d="M6 86C50 72 110 100 194 78"/><path d="M6 102C50 88 110 116 194 94"/></g>'
     + '<path d="M62 62c0-12 6-20 16-22 0 12-5 19-16 22z" fill="#375033" opacity=".85"/>';
+  return s;
+}
+
+// Logotipo "G" de Google (colores oficiales) para el botón de ingreso.
+export function googleG(size = 22) {
+  const s = document.createElementNS(NS, 'svg');
+  s.setAttribute('width', size);
+  s.setAttribute('height', size);
+  s.setAttribute('viewBox', '0 0 48 48');
+  s.setAttribute('aria-hidden', 'true');
+  s.setAttribute('focusable', 'false');
+  s.innerHTML = '<path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>';
   return s;
 }

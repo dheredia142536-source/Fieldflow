@@ -17,7 +17,7 @@ const STAFF = {
   config: () => import('./views/config.js'),
   simulador: () => import('./views/simulador.js'),
 };
-const PUBLIC = { '': () => import('./views/landing.js'), negocio: () => import('./views/login.js'), registro: () => import('./views/registro.js') };
+const PUBLIC = { '': () => import('./views/welcome.js'), negocio: () => import('./views/login.js'), registro: () => import('./views/registro.js'), recuperar: () => import('./views/recuperar.js') };
 
 let cleanup = null;
 let seq = 0;
@@ -38,7 +38,8 @@ function toggleTheme() {
 function syncThemeColor() {
   const dark = themeDark();
   document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.remove());
-  document.head.append(h('meta', { name: 'theme-color', content: dark ? '#11130f' : '#fdfdf7' }));
+  const onWelcome = !state.staff && !state.client && !location.hash.replace(/^#\/?/, '');
+  document.head.append(h('meta', { name: 'theme-color', content: onWelcome ? '#2052eb' : dark ? '#121110' : '#ffffff' }));
 }
 const themeBtn = () => h('button', { class: 'btn btn--ghost btn--icon btn--sm', type: 'button', 'aria-label': themeDark() ? t('common.lightMode') : t('common.darkMode'), onclick: toggleTheme }, icon(themeDark() ? 'sun' : 'moon', 18));
 const langSeg = () => langSwitch(getLang(), (c) => { setLang(c); if (state.client) post('/api/client/idioma', { idioma: c }).catch(() => {}); route(); });
@@ -118,14 +119,15 @@ async function route() {
   let role = null; let loader = null; let page = name;
   if (name in CLIENT && state.client) { role = 'client'; loader = CLIENT[name]; }
   else if (name in STAFF && state.staff) { role = 'staff'; loader = STAFF[name]; }
-  else if (state.staff && (name === '' || name === 'negocio' || name === 'registro' || name in CLIENT)) { go('#/hoy'); return; }
-  else if (state.client && (name === '' || name === 'negocio' || name === 'registro' || name in STAFF)) { go('#/chat'); return; }
+  else if (state.staff && (name === '' || name === 'negocio' || name === 'registro' || name === 'recuperar' || name in CLIENT)) { go('#/hoy'); return; }
+  else if (state.client && (name === '' || name === 'negocio' || name === 'registro' || name === 'recuperar' || name in STAFF)) { go('#/chat'); return; }
   else if (name in PUBLIC) { loader = PUBLIC[name]; }
   else { go('#/'); return; }
 
   const mod = await loader();
   if (my !== seq) return;
   document.title = `${state.pub.nombre || 'FieldFlow'}`;
+  syncThemeColor();
   let main = root;
   let ld = null;
   clear(root);

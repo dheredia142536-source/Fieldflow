@@ -11,7 +11,9 @@ process.env.APP_SECRET = 'meta-app-secret';
 process.env.VERIFY_TOKEN = 'verify-me';
 process.env.APP_URL = 'https://app.example.com';
 process.env.FF_DEV_CODES = '1'; // el código de verificación viaja en la respuesta (nunca en producción)
-delete process.env.RESEND_API_KEY;
+delete process.env.BREVO_API_KEY;
+delete process.env.GOOGLE_CLIENT_ID;
+delete process.env.GOOGLE_CLIENT_SECRET;
 
 // LLM falso en un puerto local
 const llm = http.createServer(async (req, res) => {
@@ -286,7 +288,7 @@ ok(r.status === 200, 'el código nuevo sí sirve');
 // Sin proveedor de correo configurado y sin modo dev: no se crea nada y se avisa
 delete process.env.FF_DEV_CODES;
 r = await new Jar().call('POST', '/api/auth/registro', reg({ correo: 'sinmail@cedros.co' }));
-ok(r.status === 503 && r.data.error === 'mail_not_configured', 'sin RESEND_API_KEY en producción avisa y no deja registros pendientes');
+ok(r.status === 503 && r.data.error === 'mail_not_configured', 'sin BREVO_API_KEY en producción avisa y no deja registros pendientes');
 [{ n: usersBefore }] = await query("select count(*) as n from registros_pendientes where correo = 'sinmail@cedros.co'");
 ok(Number(usersBefore) === 0, 'no queda un registro pendiente huérfano');
 process.env.FF_DEV_CODES = '1';
@@ -378,6 +380,99 @@ ok(ms < 60, `calcular el dashboard completo toma ${ms.toFixed(1)} ms`);
 ok(dAdd('2026-03-01', -1) === '2026-02-28', 'aritmética de fechas');
 r = await maria.call('GET', '/api/staff/dashboard');
 ok(r.status === 200 && !JSON.stringify(r.data).includes(D.servicios[0].id) && r.data.citas.every((x) => !D.citas.some((y) => y[9] === x[9])), 'el dashboard de otro negocio no mezcla datos');
+
+section('15. Recuperar contraseña (Brevo) e ingreso con Google');
+{
+  const realFetch = globalThis.fetch; const sent = [];
+  globalThis.fetch = async (url, init) => {
+    if (String(url).startsWith('https://api.brevo.com/')) { sent.push({ url: String(url), init, body: JSON.parse(init.body) }); return new Response(JSON.stringify({ messageId: 'x' }), { status: 201 }); }
+    if (String(url).startsWith('https://oauth2.googleapis.com/token')) return globalThis.__googleToken(init);
+    return realFetch(url, init);
+  };
+  const raw = (path, cookie = '') => api(new Request(`https://app.example.com${path}`, { method: 'GET', headers: { cookie }, redirect: 'manual' }));
+  const cookieOf = (res) => res.headers.getSetCookie().map((c) => c.split(';')[0]).filter((c) => !/=$/.test(c)).join('; ');
+
+  // Con Brevo configurado: el correo sale por la API de Brevo y el código no viaja en la respuesta.
+  delete process.env.FF_DEV_CODES;
+  process.env.BREVO_API_KEY = 'brevo-key'; process.env.MAIL_FROM = 'FieldFlow <no-reply@fieldflow.test>';
+  const rj = new Jar();
+  r = await rj.call('POST', '/api/auth/recuperar', { correo: 'nadie@desconocido.co', idioma: 'es' });
+  ok(r.status === 200 && r.data.ok && !r.data.codigo_dev && sent.length === 0, 'correo sin cuenta: misma respuesta y no se envía nada');
+  r = await rj.call('POST', '/api/auth/recuperar', { correo: 'Maria@Cedros.co', idioma: 'en' });
+  const mail = sent[0];
+  ok(r.status === 200 && !r.data.codigo_dev && mail?.url === 'https://api.brevo.com/v3/smtp/email', 'recuperar envía el correo por Brevo');
+  ok(mail?.init.headers['api-key'] === 'brevo-key' && mail.body.sender.email === 'no-reply@fieldflow.test' && mail.body.sender.name === 'FieldFlow' && mail.body.to[0].email === 'maria@cedros.co', 'cabecera api-key, remitente y destinatario correctos');
+  const rcode = (mail?.body.textContent.match(/\b(\d{6})\b/) || [])[1];
+  ok(/^\d{6}$/.test(rcode || '') && /password/i.test(mail.body.subject), 'el correo trae el código de 6 dígitos (en inglés si se pidió)');
+  r = await rj.call('POST', '/api/auth/recuperar', { correo: 'maria@cedros.co' });
+  ok(r.status === 429 && r.data.error === 'wait_before_resend', 'no permite pedir otro código de inmediato');
+  const wrongR = rcode === '000000' ? '111111' : '000000';
+  r = await rj.call('POST', '/api/auth/recuperar/verificar', { correo: 'maria@cedros.co', codigo: wrongR, password: 'nueva-clave-99' });
+  ok(r.status === 400 && r.data.error === 'code_invalid' && r.data.restantes === 4, 'código incorrecto → error con intentos restantes');
+  r = await rj.call('POST', '/api/auth/recuperar/verificar', { correo: 'maria@cedros.co', codigo: rcode, password: '123' });
+  ok(r.status === 400 && r.data.error === 'weak_password', 'rechaza contraseñas cortas');
+  r = await rj.call('POST', '/api/auth/recuperar/verificar', { correo: 'maria@cedros.co', codigo: rcode, password: 'nueva-clave-99' });
+  ok(r.status === 200 && rj.c.ff_staff, 'código correcto guarda la contraseña nueva y abre sesión');
+  r = await new Jar().call('POST', '/api/auth/login', { correo: 'maria@cedros.co', password: 'nueva-clave-99' });
+  ok(r.status === 200, 'ya puede entrar con la contraseña nueva');
+  r = await new Jar().call('POST', '/api/auth/login', { correo: 'maria@cedros.co', password: 'clave-segura-1' });
+  ok(r.status === 401, 'la contraseña anterior deja de servir');
+  r = await rj.call('POST', '/api/auth/recuperar/verificar', { correo: 'maria@cedros.co', codigo: rcode, password: 'otra-clave-123' });
+  ok(r.status === 400, 'el código no se puede usar dos veces');
+  // Bloqueo por intentos
+  await query("delete from recuperaciones");
+  sent.length = 0;
+  await new Jar().call('POST', '/api/auth/recuperar', { correo: 'maria@cedros.co' });
+  const c2 = sent[0].body.textContent.match(/\b(\d{6})\b/)[1]; const bad2 = c2 === '123456' ? '654321' : '123456';
+  let lastR; for (let i = 0; i < 6; i++) lastR = await new Jar().call('POST', '/api/auth/recuperar/verificar', { correo: 'maria@cedros.co', codigo: bad2, password: 'nueva-clave-99' });
+  ok(lastR.status === 429 && lastR.data.error === 'too_many_attempts', 'tras 5 intentos fallidos se bloquea la recuperación');
+  r = await new Jar().call('POST', '/api/auth/recuperar/verificar', { correo: 'maria@cedros.co', codigo: c2, password: 'nueva-clave-99' });
+  ok(r.status === 400, 'ni el código correcto sirve después del bloqueo');
+  // Sin proveedor de correo ni modo dev
+  delete process.env.BREVO_API_KEY;
+  r = await new Jar().call('POST', '/api/auth/recuperar', { correo: 'maria@cedros.co' });
+  ok(r.status === 503 && r.data.error === 'mail_not_configured', 'sin Brevo configurado avisa en vez de fingir que envió');
+  process.env.FF_DEV_CODES = '1'; delete process.env.MAIL_FROM;
+
+  // ── Google ──
+  let g = await raw('/api/auth/google/start');
+  ok(g.status === 302 && g.headers.get('location') === '/?e=google_not_configured', 'Google sin configurar: vuelve al inicio con un aviso claro');
+  process.env.GOOGLE_CLIENT_ID = 'cid-123'; process.env.GOOGLE_CLIENT_SECRET = 'sec-456';
+  g = await raw('/api/auth/google/start?lang=en');
+  const loc = new URL(g.headers.get('location'));
+  ok(g.status === 302 && loc.origin === 'https://accounts.google.com' && loc.searchParams.get('client_id') === 'cid-123'
+    && loc.searchParams.get('redirect_uri') === 'https://app.example.com/api/auth/google/callback' && loc.searchParams.get('code_challenge_method') === 'S256'
+    && loc.searchParams.get('scope') === 'openid email profile', 'inicia el flujo OAuth con PKCE, estado y la URI de redirección correcta');
+  const oc = cookieOf(g); const sess = JSON.parse(Buffer.from(oc.split('=')[1].split('.')[0], 'base64url').toString());
+  ok(sess.s === loc.searchParams.get('state') && sess.n === loc.searchParams.get('nonce') && /ff_oauth=/.test(oc), 'guarda estado y nonce en una cookie firmada de un solo uso');
+  g = await raw(`/api/auth/google/callback?code=abc&state=otro`, oc);
+  ok(g.headers.get('location') === '/?e=google_failed' && !cookieOf(g).includes('ff_staff'), 'estado distinto (CSRF) → se rechaza');
+  g = await raw(`/api/auth/google/callback?error=access_denied`, oc);
+  ok(g.headers.get('location') === '/?e=google_denied', 'si cancela en Google vuelve con un aviso');
+  const idToken = (over = {}) => { const c = { iss: 'https://accounts.google.com', aud: 'cid-123', exp: Math.floor(Date.now() / 1000) + 600, nonce: sess.n, email: 'Ana@Gmail.test', email_verified: true, name: 'Ana Pérez', given_name: 'Ana', ...over }; return `h.${Buffer.from(JSON.stringify(c)).toString('base64url')}.s`; };
+  const tokenWith = (over) => async (init) => { const f = new URLSearchParams(init.body); globalThis.__seen = Object.fromEntries(f); return new Response(JSON.stringify({ id_token: idToken(over) }), { status: 200 }); };
+  for (const [name, over] of [['audiencia ajena', { aud: 'otro' }], ['nonce distinto', { nonce: 'x' }], ['correo sin verificar', { email_verified: false }], ['token vencido', { exp: 1 }]]) {
+    globalThis.__googleToken = tokenWith(over);
+    g = await raw(`/api/auth/google/callback?code=abc&state=${sess.s}`, oc);
+    ok(g.headers.get('location') === '/?e=google_failed', `se rechaza un token con ${name}`);
+  }
+  globalThis.__googleToken = tokenWith({});
+  g = await raw(`/api/auth/google/callback?code=abc&state=${sess.s}`, oc);
+  ok(g.status === 302 && g.headers.get('location') === '/#/hoy' && /ff_staff=/.test(cookieOf(g)), 'Google válido: crea la cuenta y abre sesión');
+  ok(globalThis.__seen.code_verifier === sess.v && globalThis.__seen.client_secret === 'sec-456' && globalThis.__seen.grant_type === 'authorization_code', 'el intercambio de código usa PKCE y el secreto del servidor');
+  const gj = new Jar(); gj.c.ff_staff = cookieOf(g).match(/ff_staff=([^;]+)/)[1];
+  r = await gj.call('GET', '/api/auth/me');
+  ok(r.data.staff?.correo === 'ana@gmail.test' && r.data.staff.negocio === "Ana's business", 'la cuenta nueva queda con el correo de Google y un negocio inicial');
+  g = await raw(`/api/auth/google/callback?code=abc&state=${sess.s}`, oc);
+  ok(g.headers.getSetCookie().some((c) => /^ff_oauth=;.*Max-Age=0/.test(c)), 'la cookie del flujo se borra al volver de Google (un solo uso)');
+  const gs = await raw('/api/auth/google/start'); const oc2 = cookieOf(gs); const s2 = JSON.parse(Buffer.from(oc2.split('=')[1].split('.')[0], 'base64url').toString());
+  sess.n = s2.n; sess.s = s2.s; sess.v = s2.v;
+  g = await raw(`/api/auth/google/callback?code=abc&state=${s2.s}`, oc2);
+  const [{ n: gUsers }] = await query("select count(*) as n from usuarios_negocio where correo = 'ana@gmail.test'");
+  ok(g.headers.get('location') === '/#/hoy' && Number(gUsers) === 1, 'volver a entrar con Google reutiliza la misma cuenta');
+  delete process.env.GOOGLE_CLIENT_ID; delete process.env.GOOGLE_CLIENT_SECRET;
+  globalThis.fetch = realFetch;
+}
 
 console.log(`\n${pass} correctas, ${fail} con error`);
 llm.close();
