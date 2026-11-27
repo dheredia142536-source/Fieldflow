@@ -1,6 +1,7 @@
 // Pruebas del backend (sin red, base SQLite en memoria). Ejecuta: npm test
 import http from 'node:http';
 import { createHmac } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { mockCompletion } from './mock-llm.mjs';
 
 process.env.FF_LOCAL_DB = ':memory:';
@@ -472,6 +473,25 @@ section('15. Recuperar contraseña (Brevo) e ingreso con Google');
   ok(g.headers.get('location') === '/#/hoy' && Number(gUsers) === 1, 'volver a entrar con Google reutiliza la misma cuenta');
   delete process.env.GOOGLE_CLIENT_ID; delete process.env.GOOGLE_CLIENT_SECRET;
   globalThis.fetch = realFetch;
+}
+
+// ── 16. Páginas legales ──
+{
+  console.log('\n16. Páginas legales (Términos y Privacidad)');
+  const { LEGAL, CONTACT, UPDATED } = await import('../public/js/legal-content.js');
+  for (const doc of ['terminos', 'privacidad']) {
+    const es = LEGAL[doc].es; const en = LEGAL[doc].en;
+    ok(es.sections.length >= 10 && es.sections.length === en.sections.length, `${doc}: mismas secciones en español e inglés (${es.sections.length})`);
+    const flat = (d) => d.sections.flatMap((x) => x.blocks.flat());
+    ok(flat(es).every((x) => typeof x === 'string' && x.length > 10) && flat(en).every((x) => typeof x === 'string' && x.length > 10), `${doc}: ningún bloque vacío`);
+    ok(es.sections.every((x, i) => x.blocks.length === en.sections[i].blocks.length), `${doc}: cada sección tiene la misma estructura en ambos idiomas`);
+    ok(!JSON.stringify(LEGAL[doc]).includes('servewise'), `${doc}: sin referencias a otra marca`);
+  }
+  ok(/^[^@\s]+@googlegroups\.com$/.test(CONTACT) && /^\d{4}-\d{2}-\d{2}$/.test(UPDATED), 'contacto y fecha de actualización definidos');
+  const priv = JSON.stringify(LEGAL.privacidad.es);
+  ok(['Ley 1581 de 2012', 'Superintendencia de Industria y Comercio', '10 días hábiles', '15 días hábiles', 'Brevo', 'Vercel', 'Neon', 'Google'].every((k) => priv.includes(k)), 'la política cita la ley, los plazos de respuesta, la SIC y los proveedores');
+  const vj = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'));
+  ok(['/terminos', '/privacidad'].every((p) => vj.rewrites.some((r) => r.source === p)), 'vercel.json sirve /terminos y /privacidad');
 }
 
 console.log(`\n${pass} correctas, ${fail} con error`);

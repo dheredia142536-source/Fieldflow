@@ -17,7 +17,9 @@ const STAFF = {
   config: () => import('./views/config.js'),
   simulador: () => import('./views/simulador.js'),
 };
-const PUBLIC = { '': () => import('./views/welcome.js'), negocio: () => import('./views/login.js'), registro: () => import('./views/registro.js'), recuperar: () => import('./views/recuperar.js') };
+const PUBLIC = { '': () => import('./views/welcome.js'), negocio: () => import('./views/login.js'), registro: () => import('./views/registro.js'), recuperar: () => import('./views/recuperar.js'),
+  terminos: () => import('./views/legal.js').then((m) => ({ default: (c) => m.default({ ...c, doc: 'terminos' }) })),
+  privacidad: () => import('./views/legal.js').then((m) => ({ default: (c) => m.default({ ...c, doc: 'privacidad' }) })) };
 
 let cleanup = null;
 let seq = 0;
@@ -195,6 +197,10 @@ async function boot() {
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   }
+
+  // Direcciones limpias para las páginas legales (/terminos, /privacidad): se muestran como rutas de la app.
+  const legalPath = { '/terminos': '#/terminos', '/privacidad': '#/privacidad' }[location.pathname.replace(/\/+$/, '')];
+  if (legalPath) history.replaceState(null, '', `/${legalPath}`);
 
   let linkError = null;
   const url = new URL(location.href);

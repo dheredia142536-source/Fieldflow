@@ -1,6 +1,6 @@
 /* FieldFlow · service worker. Versión y lista de precarga las estampa dev/stamp-sw.mjs al compilar. */
-const VERSION = '27fa4556fc';
-const PRECACHE = ["/","/css/app.css","/css/base.css","/css/dash.css","/css/tokens.css","/icons/apple-touch-icon.png","/icons/favicon-32.png","/icons/favicon.svg","/icons/icon-192.png","/icons/icon-512.png","/icons/icon-maskable-512.png","/img/welcome-desktop.webp","/img/welcome-mobile.webp","/js/api.js","/js/app.js","/js/charts.js","/js/components.js","/js/dict.js","/js/i18n.js","/js/icons.js","/js/install.js","/js/state.js","/js/theme-init.js","/js/time.js","/js/ui.js","/js/views/calendario.js","/js/views/chat.js","/js/views/chats.js","/js/views/cita-sheet.js","/js/views/citas.js","/js/views/clientes.js","/js/views/config.js","/js/views/dash-model.js","/js/views/hoy.js","/js/views/login.js","/js/views/mas.js","/js/views/recuperar.js","/js/views/registro.js","/js/views/simulador.js","/js/views/welcome.js","/js/voice.js","/legal.html","/manifest.webmanifest","/offline.html"];
+const VERSION = 'dda443b0a5';
+const PRECACHE = ["/","/css/app.css","/css/base.css","/css/dash.css","/css/tokens.css","/icons/apple-touch-icon.png","/icons/favicon-32.png","/icons/favicon.svg","/icons/icon-192.png","/icons/icon-512.png","/icons/icon-maskable-512.png","/img/welcome-desktop.webp","/img/welcome-mobile.webp","/js/api.js","/js/app.js","/js/charts.js","/js/components.js","/js/dict.js","/js/i18n.js","/js/icons.js","/js/install.js","/js/legal-content.js","/js/state.js","/js/theme-init.js","/js/time.js","/js/ui.js","/js/views/calendario.js","/js/views/chat.js","/js/views/chats.js","/js/views/cita-sheet.js","/js/views/citas.js","/js/views/clientes.js","/js/views/config.js","/js/views/dash-model.js","/js/views/hoy.js","/js/views/legal.js","/js/views/login.js","/js/views/mas.js","/js/views/recuperar.js","/js/views/registro.js","/js/views/simulador.js","/js/views/sitenav.js","/js/views/welcome.js","/js/voice.js","/manifest.webmanifest","/offline.html"];
 const CACHE = `fieldflow-${VERSION}`;
 
 self.addEventListener('install', (e) => {
@@ -22,7 +22,8 @@ self.addEventListener('fetch', (e) => {
   // Navegación: se abre al instante con la app guardada y se actualiza en segundo plano (sin red: página offline).
   if (req.mode === 'navigate') {
     e.respondWith((async () => {
-      const hit = url.pathname === '/' ? await caches.match('/') : null;
+      const isApp = url.pathname === '/' || url.pathname === '/terminos' || url.pathname === '/privacidad';
+      const hit = isApp ? await caches.match('/') : null;
       const net = fetch(req).then((res) => { if (url.pathname === '/' && res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put('/', copy)); } return res; });
       if (hit) { net.catch(() => {}); return hit; }
       return net.catch(async () => (await caches.match('/')) || (await caches.match('/offline.html')));

@@ -31,7 +31,9 @@ export const dict = {
     'sol.5t': 'Asistencia técnica', 'sol.5d': 'Visitas de agrónomos y muestreos de suelo sin llamadas.',
 
     'welcome.google': 'Continuar con Google', 'welcome.email': 'Continuar con correo', 'welcome.member': '¿Ya eres miembro?', 'welcome.login': 'Inicia sesión',
-    'welcome.agree': 'Al continuar aceptas los', 'welcome.terms': 'Términos y Privacidad',
+    'welcome.agree': 'Al continuar aceptas los', 'welcome.terms': 'Términos de servicio', 'welcome.and': 'y la', 'welcome.privacy': 'Política de privacidad', 'welcome.openApp': 'Abrir la app',
+    'res.terms': 'Términos de servicio', 'res.termsd': 'Las reglas para usar FieldFlow', 'res.privacy': 'Política de privacidad', 'res.privacyd': 'Cómo cuidamos y usamos tus datos', 'res.help': 'Centro de ayuda', 'res.helpd': 'Guías y respuestas para tu operación',
+    'legal.legal': 'Legal', 'legal.updated': 'Última actualización: {date}', 'legal.onThisPage': 'En esta página', 'legal.read_terminos': 'Leer los Términos de servicio', 'legal.read_privacidad': 'Leer la Política de privacidad', 'legal.home': 'Volver al inicio',
     'login.google': 'Continuar con Google', 'login.or': 'o con tu correo', 'login.forgot': '¿Olvidaste tu contraseña?',
     'forgot.title': 'Recupera tu contraseña', 'forgot.lead': 'Escribe tu correo y te enviamos un código para crear una contraseña nueva.',
     'forgot.send': 'Enviar código', 'forgot.codeTitle': 'Crea tu contraseña nueva', 'forgot.codeSent': 'Si {email} tiene una cuenta, te enviamos un código de 6 dígitos. Vence en {min} minutos. Revisa también spam.',
@@ -188,7 +190,9 @@ export const dict = {
     'sol.5t': 'Technical assistance', 'sol.5d': 'Agronomist visits and soil sampling without phone calls.',
 
     'welcome.google': 'Continue with Google', 'welcome.email': 'Continue with Email', 'welcome.member': 'Already a member?', 'welcome.login': 'Log in',
-    'welcome.agree': 'By continuing you agree to our', 'welcome.terms': 'Terms and Privacy',
+    'welcome.agree': 'By continuing you accept the', 'welcome.terms': 'Terms of Service', 'welcome.and': 'and the', 'welcome.privacy': 'Privacy Policy', 'welcome.openApp': 'Open the app',
+    'res.terms': 'Terms of service', 'res.termsd': 'The rules for using FieldFlow', 'res.privacy': 'Privacy policy', 'res.privacyd': 'How we protect and use your data', 'res.help': 'Help center', 'res.helpd': 'Guides and answers for your operation',
+    'legal.legal': 'Legal', 'legal.updated': 'Last updated: {date}', 'legal.onThisPage': 'On this page', 'legal.read_terminos': 'Read the Terms of Service', 'legal.read_privacidad': 'Read the Privacy Policy', 'legal.home': 'Back to home',
     'login.google': 'Continue with Google', 'login.or': 'or with your email', 'login.forgot': 'Forgot your password?',
     'forgot.title': 'Reset your password', 'forgot.lead': "Enter your email and we'll send you a code to create a new password.",
     'forgot.send': 'Send code', 'forgot.codeTitle': 'Create your new password', 'forgot.codeSent': "If {email} has an account, we sent a 6-digit code. It expires in {min} minutes. Check spam too.",

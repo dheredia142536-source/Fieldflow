@@ -59,7 +59,7 @@ http.createServer(async (req, res) => {
     }
     if (path.startsWith('/api/')) return send(res, await api(await toRequest(req)));
     if (path.startsWith('/webhooks/whatsapp')) return send(res, await whatsapp(await toRequest(req)));
-    let file = normalize(join(root, 'public', path === '/' ? 'index.html' : path));
+    let file = normalize(join(root, 'public', path === '/' || path === '/terminos' || path === '/privacidad' ? 'index.html' : path));
     if (!file.startsWith(join(root, 'public'))) { res.statusCode = 403; return res.end(); }
     try {
       const data = await readFile(file);

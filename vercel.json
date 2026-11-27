@@ -3,7 +3,12 @@
   "framework": null,
   "buildCommand": "npm run build",
   "outputDirectory": "public",
+  "redirects": [
+    { "source": "/legal.html", "destination": "/terminos", "permanent": true }
+  ],
   "rewrites": [
+    { "source": "/terminos", "destination": "/index.html" },
+    { "source": "/privacidad", "destination": "/index.html" },
     {
       "source": "/webhooks/whatsapp",
       "destination": "/api/whatsapp"

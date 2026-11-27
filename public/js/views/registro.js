@@ -53,7 +53,7 @@ export default function registro({ main, go }) {
       h('div', { class: 'field' }, h('span', { class: 'label', id: 'fines-l' }, t('reg.purposes')),
         h('div', { class: 'checks', role: 'group', 'aria-labelledby': 'fines-l' }, fines.map(({ f, cb }) => h('label', { class: 'check' }, cb, t(`reg.purpose_${f}`))))),
       h('label', { class: 'check', style: 'align-items:flex-start;border-radius:var(--r-md)' }, acepta,
-        h('span', null, t('reg.accept'), ' ', h('a', { href: '/legal.html', target: '_blank', rel: 'noopener' }, t('reg.terms')))),
+        h('span', null, t('reg.accept'), ' ', h('a', { href: '/terminos', target: '_blank', rel: 'noopener' }, t('reg.terms')), ' · ', h('a', { href: '/privacidad', target: '_blank', rel: 'noopener' }, t('welcome.privacy')))),
       err, btn);
     form.addEventListener('submit', (e) => {
       e.preventDefault();
