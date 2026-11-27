@@ -22,7 +22,9 @@ export default function login({ main, go }) {
       try {
         const r = await post('/api/auth/login', { correo: email.value, password: pass.value });
         state.staff = r.usuario;
-        try { state.pub = await get('/api/public'); } catch { /* se actualiza al recargar */ }
+        // El nombre del negocio y la pantalla de Hoy se piden a la vez: el cambio es inmediato.
+        const [pub] = await Promise.all([get('/api/public').catch(() => null), import('./hoy.js').catch(() => null)]);
+        if (pub) state.pub = pub;
         go('#/hoy');
       } catch (ex) { err.textContent = ex.message; err.hidden = false; pass.focus(); }
     });

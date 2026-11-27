@@ -558,3 +558,7 @@ a.item, a.stat, a.pcard { text-decoration: none; color: inherit; }
   .wl__legal { font-size: var(--fs-sm); margin-top: 0; text-wrap: pretty; }
 }
 .authcard .card--lg { background: var(--surface); border: 1px solid var(--line); box-shadow: none; }
+
+/* Arranque: nada visible los primeros 400 ms (si carga rápido, no hay parpadeo ni pantalla de color). */
+#app > .loading { opacity: 0; animation: ffshow 0.01s 0.4s forwards; }
+@keyframes ffshow { to { opacity: 1; } }

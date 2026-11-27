@@ -21,6 +21,25 @@ const PUBLIC = { '': () => import('./views/welcome.js'), negocio: () => import('
 
 let cleanup = null;
 let seq = 0;
+let staffStarted = false;
+
+// Tareas de segundo plano de la sesión del negocio: nunca bloquean la pantalla.
+function startStaff() {
+  if (staffStarted) return;
+  staffStarted = true;
+  const refresh = async () => {
+    try { const r = await get('/api/staff/resumen'); state.attention = r.atencion.length; } catch { /* ignora */ }
+  };
+  refresh();
+  get('/api/staff/catalogo').then((c) => setPalette(c.servicios)).catch(() => { /* sin catálogo aún */ });
+  setInterval(() => { if (document.visibilityState === 'visible' && state.staff) refresh(); }, 30000);
+}
+
+// Precarga (sin bloquear) las pantallas del negocio mientras la persona está en el inicio o el login.
+function warmStaff() {
+  const run = () => ['./views/hoy.js', './views/calendario.js', './views/chats.js'].forEach((m) => import(m).catch(() => {}));
+  (window.requestIdleCallback || ((f) => setTimeout(f, 800)))(run);
+}
 
 export const go = (hash) => { if (location.hash === hash) route(); else location.hash = hash; };
 export const rerender = () => route();
@@ -37,9 +56,11 @@ function toggleTheme() {
 }
 function syncThemeColor() {
   const dark = themeDark();
-  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.remove());
   const onWelcome = !state.staff && !state.client && !location.hash.replace(/^#\/?/, '');
-  document.head.append(h('meta', { name: 'theme-color', content: onWelcome ? '#2052eb' : dark ? '#121110' : '#ffffff' }));
+  const color = onWelcome ? '#2052eb' : dark ? '#121110' : '#ffffff';
+  const metas = document.querySelectorAll('meta[name="theme-color"]');
+  metas.forEach((m, i) => { if (i) m.remove(); });
+  if (metas[0]) metas[0].setAttribute('content', color); else document.head.append(h('meta', { name: 'theme-color', content: color }));
 }
 const themeBtn = () => h('button', { class: 'btn btn--ghost btn--icon btn--sm', type: 'button', 'aria-label': themeDark() ? t('common.lightMode') : t('common.darkMode'), onclick: toggleTheme }, icon(themeDark() ? 'sun' : 'moon', 18));
 const langSeg = () => langSwitch(getLang(), (c) => { setLang(c); if (state.client) post('/api/client/idioma', { idioma: c }).catch(() => {}); route(); });
@@ -124,6 +145,7 @@ async function route() {
   else if (name in PUBLIC) { loader = PUBLIC[name]; }
   else { go('#/'); return; }
 
+  if (role === 'staff') startStaff();
   const mod = await loader();
   if (my !== seq) return;
   document.title = `${state.pub.nombre || 'FieldFlow'}`;
@@ -169,7 +191,6 @@ function viewportWatch() {
 async function boot() {
   initLang();
   applyTheme();
-  syncThemeColor();
   viewportWatch();
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
@@ -187,14 +208,7 @@ async function boot() {
     state.pub = pub; state.staff = me.staff; state.client = me.client;
   } catch { /* sin conexión: se muestra la portada */ }
   if (linkError) state.linkError = linkError;
-  if (state.staff) {
-    const refresh = async () => {
-      try { const r = await get('/api/staff/resumen'); state.attention = r.atencion.length; } catch { /* ignora */ }
-    };
-    refresh();
-    try { setPalette((await get('/api/staff/catalogo')).servicios); } catch { /* sin catálogo aún */ }
-    setInterval(() => { if (document.visibilityState === 'visible' && state.staff) refresh(); }, 30000);
-  }
+  if (!state.staff && !state.client) warmStaff();
   window.addEventListener('hashchange', route);
   route();
 }
