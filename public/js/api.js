@@ -8,17 +8,27 @@ export class ApiError extends Error {
   }
 }
 
-async function request(method, path, body) {
-  let res;
-  try {
-    res = await fetch(path, {
-      method,
-      credentials: 'same-origin',
-      headers: method === 'GET' ? {} : { 'content-type': 'application/json' },
-      body: method === 'GET' ? undefined : JSON.stringify(body ?? {}),
-    });
-  } catch {
-    throw new ApiError(0, 'offline', t('err.offline'));
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Las lecturas (GET) y los guardados con identificador propio (retry) se reintentan una vez si la red falla;
+// el servidor reconoce el mismo identificador y no duplica nada.
+async function request(method, path, body, { retry = method === 'GET' } = {}) {
+  let res = null; let last = null;
+  for (let attempt = 0; attempt < (retry ? 3 : 1) && !res; attempt++) {
+    if (attempt) await wait(600 * attempt);
+    try {
+      res = await fetch(path, {
+        method,
+        credentials: 'same-origin',
+        headers: method === 'GET' ? {} : { 'content-type': 'application/json' },
+        body: method === 'GET' ? undefined : JSON.stringify(body ?? {}),
+      });
+    } catch (e) { last = e; }
+  }
+  if (!res) {
+    // Se muestra la causa técnica entre corchetes para poder diagnosticar (p. ej. «TypeError: Load failed»).
+    const why = last ? `${last.name || 'Error'}: ${String(last.message || '').slice(0, 60)}` : '';
+    throw new ApiError(0, 'offline', `${t('err.offline')}${why ? ` [${why}]` : ''}`);
   }
   let data = null;
   try { data = await res.json(); } catch { /* sin cuerpo */ }
@@ -34,7 +44,7 @@ async function request(method, path, body) {
 }
 
 export const get = (p) => request('GET', p);
-export const post = (p, b) => request('POST', p, b);
+export const post = (p, b, o) => request('POST', p, b, o);
 export const patch = (p, b) => request('PATCH', p, b);
 export const put = (p, b) => request('PUT', p, b);
 export const del = (p) => request('DELETE', p);

@@ -111,6 +111,7 @@ function formSheet(x, done) {
   const prevSoon = debounce(showPrev, 500); f.lat.addEventListener('input', prevSoon); f.lng.addEventListener('input', prevSoon);
   geoEstado().then((on) => { geoBox.hidden = !on; showPrev(); });
   const photos = []; const prev = h('div', { class: 'tr-queue' });
+  const newId = x ? null : (crypto.randomUUID ? crypto.randomUUID() : null); // un reintento no duplica la ficha
   const pick = h('input', { type: 'file', accept: 'image/*', multiple: true, class: 'sr-only', id: 'trphotos' });
   pick.addEventListener('change', () => {
     for (const file of pick.files) { if (photos.length >= 10) break; photos.push(file); prev.append(h('span', { class: 'tr-queue__it' }, icon('camera', 14), file.name.slice(0, 22))); }
@@ -131,9 +132,9 @@ function formSheet(x, done) {
   });
   save.addEventListener('click', () => busy(save, async () => {
     try {
-      const body = { id: x?.id, titulo: f.titulo.value, operacion: op, estado: d.estado, uso: f.uso.value || null, departamento: f.dep.value, municipio: f.mun.value, vereda: f.ver.value, direccion: f.dir.value, lat: f.lat.value, lng: f.lng.value,
+      const body = { id: x?.id || newId || undefined, titulo: f.titulo.value, operacion: op, estado: d.estado, uso: f.uso.value || null, departamento: f.dep.value, municipio: f.mun.value, vereda: f.ver.value, direccion: f.dir.value, lat: f.lat.value, lng: f.lng.value,
         area_ha: Number(f.area.value) || 0, precio: Number(f.precio.value) || 0, negociable: neg.checked, descripcion: f.desc.value, caracteristicas: [...carac], documentos: d.documentos, contacto_nombre: f.cn.value, contacto_tel: f.ct.value };
-      const r = await post('/api/staff/terrenos', body);
+      const r = await post('/api/staff/terrenos', body, { retry: true });
       let failed = 0;
       for (const file of photos) { try { await post(`/api/staff/terrenos/${r.id}/fotos`, await resizeImage(file)); } catch { failed++; } }
       sh.close(); toast(failed ? t('ter.savedPhotosFail', { n: failed }) : t('common.saved'), !!failed); done(r.id);
@@ -154,7 +155,8 @@ function lista({ main, go, isCurrent }) {
   const paint = () => {
     clear(root);
     const head = h('header', { class: 'd-head' }, h('div', null, h('h1', null, t('nav.land')), h('p', null, t('ter.lead'))),
-      h('div', { class: 'd-head__act' }, h('button', { class: 'btn btn--primary btn--sm', type: 'button', onclick: () => formSheet(null, (id) => go(`#/terrenos/${id}`)) }, icon('plus', 16), t('ter.new'))));
+      // Sin terrenos todavía, el botón principal está en el centro de la pantalla (no se repite arriba).
+      !data || data.terrenos.length ? h('div', { class: 'd-head__act' }, h('button', { class: 'btn btn--primary btn--sm', type: 'button', onclick: () => formSheet(null, (id) => go(`#/terrenos/${id}`)) }, icon('plus', 16), t('ter.new'))) : null);
     if (!data) { put(root, head, h('div', { class: 'tr-grid' }, [0, 1, 2].map(() => skel('d-skel--chart')))); return; }
     const all = data.terrenos; const live = all.filter((x) => x.estado !== 'cerrado');
     const kp = h('div', { class: 'd-kpis' },

@@ -177,3 +177,15 @@ button.d-att__it { width: 100%; text-align: left; }
 .tr-mapprev { margin: 0 0 16px; border-radius: var(--r-md); overflow: hidden; border: 1px solid var(--edge); } .tr-mapprev img { width: 100%; aspect-ratio: 640 / 280; object-fit: cover; background: var(--page); } .tr-mapprev small { display: block; padding: 8px 12px; color: var(--text-2); font-size: 13px; }
 .tr-map { display: block; border-radius: var(--r-md); overflow: hidden; background: var(--page); aspect-ratio: 900 / 480; } .tr-map[hidden] { display: none; } .tr-map img { width: 100%; height: 100%; object-fit: cover; }
 .tr-addplace { display: grid; gap: 10px; justify-items: start; }
+
+/* Celular: acciones rápidas del hato en cuadrícula de 2 y botones de encabezado con su tamaño natural */
+@media (max-width: 640px) {
+  .ga-quick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: 100%; }
+  .ga-quick .btn { width: 100%; padding: 0 10px; white-space: normal; text-align: center; line-height: 1.15; min-height: 44px; }
+  .d-head__act { width: auto; }
+}
+@media (max-width: 640px) {
+  .lk-main__l .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .lk-main__l .row .btn { width: 100%; padding: 0 10px; }
+  .lk-main__l .row .btn--primary { grid-column: 1 / -1; }
+}

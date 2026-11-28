@@ -834,6 +834,28 @@ section('22. Recordatorios de cita por correo');
   delete process.env.BREVO_API_KEY; delete process.env.CRON_SECRET; delete process.env.MAIL_FROM; delete process.env.BREVO_API_BASE; brevo.close();
 }
 
+section('23. Guardados que se pueden reintentar sin duplicar');
+{
+  const id1 = crypto.randomUUID(); const id2 = crypto.randomUUID(); const id3 = crypto.randomUUID();
+  r = await staff.call('POST', '/api/staff/terrenos', { id: id1, titulo: 'Reintento', area_ha: 3, precio: 100000000 });
+  const r2 = await staff.call('POST', '/api/staff/terrenos', { id: id1, titulo: 'Reintento', area_ha: 3, precio: 100000000 });
+  ok(r.status === 200 && r2.status === 200 && r.data.id === id1 && r2.data.id === id1, 'terreno: guardar dos veces con el mismo identificador devuelve la misma ficha');
+  ok((await staff.call('GET', '/api/staff/terrenos')).data.terrenos.filter((x) => x.titulo === 'Reintento').length === 1, 'terreno: un reintento no duplica la ficha');
+  r = await staff.call('POST', '/api/staff/terrenos', { id: 'no-es-uuid', titulo: 'X' });
+  ok(r.status === 400 && r.data.error === 'invalid_id', 'terreno: rechaza identificadores inválidos');
+  r = await maria.call('POST', '/api/staff/terrenos', { id: id1, titulo: 'Robo' });
+  ok(r.status === 404, 'terreno: otro negocio no puede usar un identificador ajeno');
+  r = await staff.call('POST', '/api/staff/ganado/animales', { id: id2, arete: 'RT-1', sexo: 'hembra' });
+  const a2 = await staff.call('POST', '/api/staff/ganado/animales', { id: id2, arete: 'RT-1', sexo: 'hembra' });
+  ok(r.status === 200 && a2.status === 200 && (await staff.call('GET', '/api/staff/ganado')).data.animales.filter((x) => x.arete === 'RT-1').length === 1, 'animal: un reintento no duplica el animal');
+  r = await staff.call('POST', '/api/staff/ganado/eventos', { id: id3, animal_id: id2, tipo: 'peso', fecha: todayLocal(), valor: 300 });
+  const e2 = await staff.call('POST', '/api/staff/ganado/eventos', { id: id3, animal_id: id2, tipo: 'peso', fecha: todayLocal(), valor: 300 });
+  const det = (await staff.call('GET', `/api/staff/ganado/animales/${id2}`)).data;
+  ok(r.status === 200 && e2.data.repetido === true && det.eventos.filter((e) => e.tipo === 'peso').length === 1, 'evento: un reintento no repite el pesaje');
+  r = await maria.call('POST', '/api/staff/ganado/eventos', { id: id3, animal_id: id2, tipo: 'peso', fecha: todayLocal(), valor: 1 });
+  ok(r.status === 404, 'evento: otro negocio no puede reutilizar ese identificador');
+}
+
 console.log(`\n${pass} correctas, ${fail} con error`);
 llm.close();
 process.exit(fail ? 1 : 0);

@@ -48,6 +48,7 @@ export default function ganado({ main, params, go, isCurrent }) {
   function animalForm(a, done) {
     const d = a || { arete: '', nombre: '', sexo: 'hembra', raza: '', nacimiento: '', categoria: '', lote: '', madre: '', padre: '', peso: '', compra_fecha: '', compra_precio: '', notas: '' };
     let sexo = d.sexo;
+    const newId = a ? null : (crypto.randomUUID ? crypto.randomUUID() : null); // un reintento no duplica el animal
     const f = {
       arete: h('input', { class: 'input', value: d.arete, maxlength: '40', autofocus: true, autocomplete: 'off', placeholder: 'A-001' }),
       nombre: h('input', { class: 'input', value: d.nombre, maxlength: '80', autocomplete: 'off', placeholder: 'Luna' }),
@@ -75,7 +76,7 @@ export default function ganado({ main, params, go, isCurrent }) {
     });
     save.addEventListener('click', () => busy(save, async () => {
       try {
-        const r = await post('/api/staff/ganado/animales', { id: a?.id, arete: f.arete.value, nombre: f.nombre.value, sexo, raza: f.raza.value, nacimiento: f.nac.value, categoria: f.cat.value || null, lote: f.lote.value, madre: f.madre.value, padre: f.padre.value, peso: a ? undefined : num(f.peso), compra_fecha: f.cf.value, compra_precio: num(f.cp) || 0, notas: f.notas.value, estado: a?.estado });
+        const r = await post('/api/staff/ganado/animales', { id: a?.id || newId || undefined, arete: f.arete.value, nombre: f.nombre.value, sexo, raza: f.raza.value, nacimiento: f.nac.value, categoria: f.cat.value || null, lote: f.lote.value, madre: f.madre.value, padre: f.padre.value, peso: a ? undefined : num(f.peso), compra_fecha: f.cf.value, compra_precio: num(f.cp) || 0, notas: f.notas.value, estado: a?.estado }, { retry: true });
         sh.close(); toast(t('common.saved')); await done(r.id);
       } catch (e) { toast(e.message, true); }
     }));
@@ -84,6 +85,7 @@ export default function ganado({ main, params, go, isCurrent }) {
   // ── Registrar un evento (peso, sanidad, monta, parto, leche, venta…) ──────────────────────
   function eventSheet(tipo, a, done) {
     const hoy = todayLocal();
+    const evId = crypto.randomUUID ? crypto.randomUUID() : undefined; // un reintento no repite el registro
     const fecha = h('input', { class: 'input', type: 'date', value: hoy, max: hoy, 'aria-label': t('ga.date') });
     const x = {
       valor: h('input', { class: 'input', type: 'number', inputmode: 'decimal', step: 'any', min: '0', autofocus: true }),
@@ -118,9 +120,9 @@ export default function ganado({ main, params, go, isCurrent }) {
     const sh = openSheet({ title: `${t(`ga.ev_${tipo}`)}${a ? ` · ${label(a)}` : ''}`, body: h('div', null, ...body), foot: [save] });
     save.addEventListener('click', () => busy(save, async () => {
       try {
-        const b = { animal_id: a?.id, tipo, fecha: fecha.value, valor: num(x.valor), producto: x.producto.value, proxima_fecha: x.proxima.value || undefined, detalle: x.detalle.value, toro: x.toro.value, metodo, prenada, comprador: x.comprador.value, caja: caja.checked };
+        const b = { id: evId, animal_id: a?.id, tipo, fecha: fecha.value, valor: num(x.valor), producto: x.producto.value, proxima_fecha: x.proxima.value || undefined, detalle: x.detalle.value, toro: x.toro.value, metodo, prenada, comprador: x.comprador.value, caja: caja.checked };
         if (tipo === 'parto' && conCria.checked && x.cArete.value.trim()) b.cria = { arete: x.cArete.value, sexo: cSexo, peso: num(x.cPeso) };
-        const r = await post('/api/staff/ganado/eventos', b);
+        const r = await post('/api/staff/ganado/eventos', b, { retry: true });
         sh.close();
         toast(r.parto_probable ? t('ga.calving', { d: dayShort(r.parto_probable) }) : tipo === 'venta' && b.caja && r.caja === false ? t('ga.cashFail') : t('common.saved'));
         await done?.();

@@ -125,3 +125,22 @@ input[type='number']::-webkit-outer-spin-button, input[type='number']::-webkit-i
 .check-line input { width: 20px; height: 20px; accent-color: var(--accent-strong); margin: 0; }
 .checks { gap: 8px; margin-bottom: 20px; }
 .seg--full { display: flex; width: 100%; } .seg--full button { flex: 1; }
+
+/* ── Ajuste de tamaños: botones y chips proporcionados en celular ── */
+.empty .btn { margin-top: 6px; }
+.btn svg { width: 18px; height: 18px; } .btn--sm svg { width: 16px; height: 16px; }
+.btn--icon svg { width: 20px; height: 20px; } .btn--icon.btn--sm svg { width: 18px; height: 18px; }
+/* Casillas en forma de chip: la marca aparece dentro del chip, sin casilla grande */
+.check { min-height: 40px; padding: 0 14px 0 12px; gap: 8px; font-size: 14px; font-weight: 500; transition: background .15s, border-color .15s, color .15s; }
+.check input { appearance: none; -webkit-appearance: none; flex: none; width: 18px; height: 18px; margin: 0; border: 1.5px solid var(--line-strong); border-radius: 50%; background: transparent; display: grid; place-content: center; transition: background .15s, border-color .15s; }
+.check input::after { content: ''; width: 9px; height: 5px; border: 2px solid var(--on-accent); border-top: 0; border-right: 0; transform: translateY(-1px) rotate(-45deg) scale(0); transition: transform .12s var(--ease); }
+.check input:checked { background: var(--accent-strong); border-color: var(--accent-strong); }
+.check input:checked::after { transform: translateY(-1px) rotate(-45deg) scale(1); }
+.check:has(input:checked) { background: var(--accent-soft); border-color: var(--accent-strong); }
+.checks { gap: 8px; }
+@media (max-width: 640px) {
+  .btn { min-height: 44px; padding: 0 20px; font-size: 15px; }
+  .btn--sm { min-height: 40px; padding: 0 16px; font-size: 14px; }
+  .sheet__foot .btn { min-height: 48px; }
+  .fab { width: 56px; height: 56px; }
+}
