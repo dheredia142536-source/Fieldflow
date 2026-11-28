@@ -1,6 +1,6 @@
 // Terrenos: fichas de compra y venta con fotos, descripción, documentos, interesados y herramientas de negociación.
 import { get, post, patch, del } from '../api.js';
-import { h, clear, openSheet, toast, busy, field, confirmDialog } from '../ui.js';
+import { h, clear, openSheet, toast, busy, field, confirmDialog, debounce } from '../ui.js';
 import { icon } from '../icons.js';
 import { t } from '../i18n.js';
 import { fmtRelative } from '../time.js';
@@ -19,6 +19,11 @@ const PASTOS = [{ id: 'natural', ua: 0.6 }, { id: 'mejorado', ua: 1.5 }, { id: '
 const place = (x) => [x.vereda, x.municipio, x.departamento].filter(Boolean).join(', ');
 const waLink = (tel, text) => `https://wa.me/${String(tel || '').replace(/\D/g, '')}${text ? `?text=${encodeURIComponent(text)}` : ''}`;
 const mapLink = (x) => `https://www.google.com/maps?q=${x.lat},${x.lng}`;
+const dirLink = (x) => `https://www.google.com/maps/dir/?api=1&destination=${x.lat},${x.lng}`;
+const mapImg = (lat, lng, w, hgt) => `/api/staff/geo/mapa?lat=${lat}&lng=${lng}&w=${w}&h=${hgt}&z=14`;
+// ¿Está activado el mapa de Geoapify en este sitio? (se pregunta una vez)
+let geoOn = null;
+const geoEstado = () => (geoOn !== null ? Promise.resolve(geoOn) : get('/api/staff/geo/estado').then((r) => (geoOn = !!r.activo)).catch(() => (geoOn = false)));
 
 function fichaTexto(x) {
   return [`🌿 ${x.titulo}`, x.operacion === 'compra' ? t('ter.wantBuy') : t('ter.forSale'), place(x) && `📍 ${place(x)}`,
@@ -62,6 +67,47 @@ function formSheet(x, done) {
   const calc = () => { const a = Number(f.area.value); const p = Number(f.precio.value); perHa.textContent = a > 0 && p > 0 ? `= ${money(p / a)} ${t('ter.perHa')}` : ''; };
   f.area.addEventListener('input', calc); f.precio.addEventListener('input', calc); calc();
   const opSeg = seg([{ id: 'venta', label: t('ter.iSell') }, { id: 'compra', label: t('ter.iBuy') }], op, (id) => { op = id; opSeg.querySelectorAll('button').forEach((b) => { const on = b.dataset.id === id; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; }); }, { label: t('ter.operation'), cls: 'seg--full' });
+  // Buscador de lugares (Geoapify), ubicación actual y vista previa del mapa
+  const mapPrev = h('div', { class: 'tr-mapprev', hidden: true });
+  const showPrev = () => {
+    clear(mapPrev); const la = Number(f.lat.value); const ln = Number(f.lng.value);
+    if (!geoOn || f.lat.value === '' || f.lng.value === '' || !Number.isFinite(la) || !Number.isFinite(ln) || Math.abs(la) > 90 || Math.abs(ln) > 180) { mapPrev.hidden = true; return; }
+    mapPrev.hidden = false;
+    const im = h('img', { src: mapImg(la, ln, 640, 280), alt: t('ter.mapPreview') }); im.onerror = () => { mapPrev.hidden = true; };
+    mapPrev.append(im, h('small', null, t('ter.mapPreview')));
+  };
+  const fillPlace = (p) => {
+    if (p.departamento) f.dep.value = p.departamento; if (p.municipio) f.mun.value = p.municipio; f.ver.value = p.vereda || f.ver.value;
+    if (p.direccion && !f.dir.value) f.dir.value = p.direccion;
+    f.lat.value = Number(p.lat).toFixed(6); f.lng.value = Number(p.lng).toFixed(6); showPrev();
+  };
+  const sugg = h('ul', { class: 'tr-sugg', role: 'listbox', 'aria-label': t('ter.geoSearch'), hidden: true });
+  const search = h('input', { class: 'input', type: 'search', placeholder: t('ter.geoPh'), autocomplete: 'off', 'aria-label': t('ter.geoSearch') });
+  let seq = 0;
+  const runSearch = debounce(async () => {
+    const q = search.value.trim(); const my = ++seq;
+    if (q.length < 3) { sugg.hidden = true; return; }
+    clear(sugg); sugg.hidden = false; sugg.append(h('li', { class: 'tr-sugg__note' }, t('common.loading')));
+    try {
+      const r = await get(`/api/staff/geo/buscar?q=${encodeURIComponent(q)}`); if (my !== seq) return;
+      clear(sugg);
+      if (!r.resultados.length) { sugg.append(h('li', { class: 'tr-sugg__note' }, t('ter.geoNone'))); return; }
+      for (const p of r.resultados) sugg.append(h('li', { role: 'option' }, h('button', { class: 'tr-sugg__it', type: 'button', onclick: () => { fillPlace(p); search.value = p.texto; sugg.hidden = true; } }, icon('pin', 16), h('span', null, h('strong', null, p.titulo || p.texto), h('small', null, p.texto)))));
+    } catch (e) { if (my !== seq) return; clear(sugg); sugg.append(h('li', { class: 'tr-sugg__note' }, e.message)); }
+  }, 350);
+  search.addEventListener('input', runSearch); search.addEventListener('keydown', (e) => { if (e.key === 'Escape') { sugg.hidden = true; } });
+  const geoBox = h('div', { class: 'tr-geo', hidden: true }, field(t('ter.geoSearch'), search, t('ter.geoHint')), sugg);
+  const here = h('button', { class: 'btn btn--secondary btn--sm', type: 'button' }, icon('pin', 16), t('ter.useMyLocation'));
+  here.addEventListener('click', () => busy(here, () => new Promise((done) => {
+    if (!navigator.geolocation) { toast(t('ter.locDenied'), true); done(); return; }
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      const { latitude: la, longitude: ln } = pos.coords; f.lat.value = la.toFixed(6); f.lng.value = ln.toFixed(6);
+      if (geoOn) { try { const r = await get(`/api/staff/geo/inversa?lat=${la}&lng=${ln}`); if (r.lugar) fillPlace({ ...r.lugar, lat: la, lng: ln }); } catch { /* deja solo las coordenadas */ } }
+      showPrev(); toast(t('ter.located')); done();
+    }, () => { toast(t('ter.locDenied'), true); done(); }, { enableHighAccuracy: true, timeout: 15000 });
+  })));
+  const prevSoon = debounce(showPrev, 500); f.lat.addEventListener('input', prevSoon); f.lng.addEventListener('input', prevSoon);
+  geoEstado().then((on) => { geoBox.hidden = !on; showPrev(); });
   const photos = []; const prev = h('div', { class: 'tr-queue' });
   const pick = h('input', { type: 'file', accept: 'image/*', multiple: true, class: 'sr-only', id: 'trphotos' });
   pick.addEventListener('change', () => {
@@ -73,8 +119,8 @@ function formSheet(x, done) {
     title: x ? t('ter.edit') : t('ter.new'),
     body: h('div', null,
       h('section', { class: 'fsec' }, h('h3', null, t('ter.sBasics')), h('div', { class: 'field' }, h('span', { class: 'label' }, t('ter.operation')), opSeg), field(t('ter.title'), f.titulo), field(t('ter.use'), f.uso)),
-      h('section', { class: 'fsec' }, h('h3', null, t('ter.sPlace')), h('div', { class: 'grid2' }, field(t('ter.dep'), f.dep), field(t('ter.mun'), f.mun)), h('div', { class: 'grid2' }, field(t('ter.vereda'), f.ver), field(t('ter.ref'), f.dir)),
-        h('div', { class: 'grid2' }, field(t('ter.lat'), f.lat), field(t('ter.lng'), f.lng)), h('p', { class: 'hint', style: 'margin:-8px 0 16px' }, t('ter.coordsHint'))),
+      h('section', { class: 'fsec' }, h('h3', null, t('ter.sPlace')), geoBox, h('div', { class: 'tr-here' }, here), h('div', { class: 'grid2' }, field(t('ter.dep'), f.dep), field(t('ter.mun'), f.mun)), h('div', { class: 'grid2' }, field(t('ter.vereda'), f.ver), field(t('ter.ref'), f.dir)),
+        h('div', { class: 'grid2' }, field(t('ter.lat'), f.lat), field(t('ter.lng'), f.lng)), mapPrev, h('p', { class: 'hint', style: 'margin:-8px 0 16px' }, t('ter.coordsHint'))),
       h('section', { class: 'fsec' }, h('h3', null, t('ter.sPrice')), h('div', { class: 'grid2' }, field(t('ter.area'), f.area), field(t('ter.price'), f.precio)), perHa, h('label', { class: 'check-line' }, neg, t('ter.negotiable'))),
       h('section', { class: 'fsec' }, h('h3', null, t('ter.sDesc')), field(t('ter.desc'), f.desc), h('div', { class: 'field' }, h('span', { class: 'label' }, t('ter.features')), chips)),
       h('section', { class: 'fsec' }, h('h3', null, t('ter.sContact')), h('div', { class: 'grid2' }, field(t('ter.cName'), f.cn), field(t('ter.cPhone'), f.ct))),
@@ -196,6 +242,20 @@ function detalle({ main, go, id, isCurrent }) {
         h('a', { class: 'btn btn--primary btn--sm', href: waLink('', fichaTexto(x)), target: '_blank', rel: 'noopener noreferrer' }, icon('send', 16), 'WhatsApp'))));
   }
 
+  function ubicacion() {
+    const x = D.terreno; const has = x.lat != null && x.lng != null;
+    const img = has ? h('img', { src: mapImg(x.lat, x.lng, 900, 480), alt: `${t('ter.mapTitle')}: ${place(x) || x.titulo}`, loading: 'lazy' }) : null;
+    const frame = has ? h('a', { class: 'tr-map', href: mapLink(x), target: '_blank', rel: 'noopener noreferrer', 'aria-label': t('ter.openMap') }, img) : null;
+    if (img) img.onerror = () => { frame.hidden = true; };
+    return h('section', { class: 'd-card' }, h('header', { class: 'd-card__head' }, h('div', null, h('h2', { class: 'd-card__title' }, t('ter.mapTitle')), h('p', { class: 'd-card__sub' }, [place(x), x.direccion].filter(Boolean).join(' · ') || t('ter.noPlace')))),
+      frame,
+      has ? h('div', { class: 'row' },
+        h('a', { class: 'btn btn--primary btn--sm', href: dirLink(x), target: '_blank', rel: 'noopener noreferrer' }, icon('send', 16), t('ter.directions')),
+        h('a', { class: 'btn btn--secondary btn--sm', href: mapLink(x), target: '_blank', rel: 'noopener noreferrer' }, icon('map', 16), t('ter.openMap')),
+        h('button', { class: 'btn btn--ghost btn--sm', type: 'button', onclick: () => copy(`${x.lat}, ${x.lng}`, t('ter.coordsCopied')) }, icon('copy', 16), `${Number(x.lat).toFixed(4)}, ${Number(x.lng).toFixed(4)}`))
+        : h('div', { class: 'tr-addplace' }, h('p', { class: 'd-calm' }, t('ter.addPlace')), h('button', { class: 'btn btn--secondary btn--sm', type: 'button', onclick: () => formSheet(x, () => load()) }, icon('pin', 16), t('ter.edit'))));
+  }
+
   function interesados() {
     const nm = h('input', { class: 'input', maxlength: '120', placeholder: t('ter.iName'), 'aria-label': t('ter.iName'), autocomplete: 'off' });
     const tl = h('input', { class: 'input', type: 'tel', inputmode: 'tel', maxlength: '40', placeholder: t('ter.iPhone'), 'aria-label': t('ter.iPhone'), autocomplete: 'off' });
@@ -229,13 +289,13 @@ function detalle({ main, go, id, isCurrent }) {
         h('div', { class: 'tr-col' }, gallery(),
           h('section', { class: 'd-card' }, h('h2', { class: 'd-card__title' }, t('ter.sDesc')), x.descripcion ? h('p', { class: 'tr-desc' }, x.descripcion) : h('p', { class: 'd-calm' }, t('ter.noDesc')),
             x.caracteristicas.length ? h('div', { class: 'tr-feats' }, x.caracteristicas.map((c) => h('span', { class: 'tr-feat' }, icon('check', 14), t(`ter.c_${c}`)))) : null),
-          interesados()),
+          ubicacion(), interesados()),
         h('div', { class: 'tr-col' },
           h('section', { class: 'd-card tr-price' }, h('div', null, h('small', null, x.operacion === 'compra' ? t('ter.budget') : t('ter.askPrice')), h('strong', null, x.precio ? money(x.precio) : '—'), x.negociable ? h('span', { class: 'badge badge--info' }, t('ter.negotiable')) : null),
             h('dl', { class: 'tr-facts' }, h('dt', null, t('ter.area')), h('dd', null, x.area_ha ? `${qty(x.area_ha)} ha` : '—'), h('dt', null, t('ter.perHaLabel')), h('dd', null, x.precio_ha ? money(x.precio_ha) : '—'),
               h('dt', null, t('ter.perM2')), h('dd', null, x.precio_ha ? money(x.precio_ha / 10000) : '—'), x.contacto_tel ? [h('dt', null, t('ter.contact')), h('dd', null, h('a', { href: `tel:${x.contacto_tel}` }, `${x.contacto_nombre ? `${x.contacto_nombre} · ` : ''}${x.contacto_tel}`))] : null),
             h('div', { class: 'field', style: 'margin:0' }, h('span', { class: 'label' }, t('ter.state')), stateSeg),
-            x.lat != null && x.lng != null ? h('a', { class: 'btn btn--secondary btn--sm', href: mapLink(x), target: '_blank', rel: 'noopener noreferrer' }, icon('map', 16), t('ter.openMap')) : null),
+            null),
           h('section', { class: 'd-card' }, h('header', { class: 'd-card__head' }, h('div', null, h('h2', { class: 'd-card__title' }, t('ter.docs')), h('p', { class: 'd-card__sub' }, t('ter.docsSub', { a: docs.size, b: DOCS.length })))),
             h('div', { class: 'tr-bar', role: 'progressbar', 'aria-valuenow': String(docs.size), 'aria-valuemin': '0', 'aria-valuemax': String(DOCS.length) }, h('i', { style: `width:${(docs.size / DOCS.length) * 100}%` })),
             h('ul', { class: 'tr-docs' }, DOCS.map((k) => h('li', null, h('label', { class: 'check-line' }, h('input', { type: 'checkbox', checked: docs.has(k), onchange: () => toggleDoc(k) }), h('span', null, h('strong', null, t(`ter.d_${k}`)), h('small', null, t(`ter.d_${k}_h`)))))))),

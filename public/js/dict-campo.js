@@ -1,5 +1,8 @@
 // Textos de Terrenos y Ganado (es / en). Cada clave existe en los dos idiomas (lo verifica `npm test`).
 export const es = {
+  'ter.geoSearch': 'Buscar lugar o dirección', 'ter.geoPh': 'Ej. Apiay, Villavicencio', 'ter.geoHint': 'Elige una opción y se llenan solos el departamento, el municipio y las coordenadas.', 'ter.geoNone': 'Sin resultados. Escribe los datos a mano.',
+  'ter.useMyLocation': 'Estoy en el terreno: usar mi ubicación', 'ter.located': 'Ubicación guardada', 'ter.locDenied': 'No pude obtener tu ubicación. Revisa el permiso del navegador.', 'ter.mapPreview': '¿Es aquí? Así se verá en el mapa',
+  'ter.mapTitle': 'Ubicación', 'ter.directions': 'Cómo llegar', 'ter.addPlace': 'Agrega la ubicación para ver el mapa y compartir cómo llegar.', 'ter.coordsCopied': 'Coordenadas copiadas',
   'nav.link': 'Mi enlace', 'link.visitor': 'Visitante web', 'mas.linkSub': 'Enlace y QR para tu WhatsApp Business', 'crm.sendLink': 'Enviar enlace',
   'link.opening': 'Abriendo el asistente…', 'link.notFound': 'Este enlace no existe', 'link.notFoundText': 'Revisa que esté completo o pídele el enlace de nuevo al negocio.',
   'link.yourData': 'Tus datos', 'link.yourName': 'Tu nombre', 'link.yourPhone': 'Tu teléfono (WhatsApp)', 'link.consent': 'Acepto que el negocio use mis datos para agendar y contactarme. Ver', 'link.privacy': 'política de privacidad',
@@ -72,6 +75,9 @@ export const es = {
   'ga.milk14': 'Últimos 14 días', 'ga.milk14Cap': 'litros del hato', 'ga.perCow': 'Por vaca', 'ga.perCowCap': 'promedio diario aprox.', 'ga.milkRegister': 'Registrar la leche', 'ga.milkSub': 'Un total por día. Si lo registras otra vez el mismo día, se reemplaza.', 'ga.milkChart': 'Producción diaria',
 };
 export const en = {
+  'ter.geoSearch': 'Search place or address', 'ter.geoPh': 'E.g. Apiay, Villavicencio', 'ter.geoHint': 'Pick an option and the state, town and coordinates fill in automatically.', 'ter.geoNone': 'No results. Type the details by hand.',
+  'ter.useMyLocation': "I'm at the land: use my location", 'ter.located': 'Location saved', 'ter.locDenied': 'Could not get your location. Check the browser permission.', 'ter.mapPreview': 'Is this the place? This is how it will look on the map',
+  'ter.mapTitle': 'Location', 'ter.directions': 'Get directions', 'ter.addPlace': 'Add the location to see the map and share how to get there.', 'ter.coordsCopied': 'Coordinates copied',
   'nav.link': 'My link', 'link.visitor': 'Web visitor', 'mas.linkSub': 'Link and QR for your WhatsApp Business', 'crm.sendLink': 'Send link',
   'link.opening': 'Opening the assistant…', 'link.notFound': 'This link does not exist', 'link.notFoundText': 'Check that it is complete, or ask the business for the link again.',
   'link.yourData': 'Your details', 'link.yourName': 'Your name', 'link.yourPhone': 'Your phone (WhatsApp)', 'link.consent': 'I agree that the business may use my data to book and contact me. See', 'link.privacy': 'privacy policy',

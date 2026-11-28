@@ -705,6 +705,66 @@ section('20. Enlace público del negocio (sin cuenta)');
   ok(sinNombre.length === 0, 'CRM: los visitantes que no dejaron datos no llenan los contactos');
 }
 
+section('21. Mapa con Geoapify (la clave nunca sale del servidor)');
+{
+  const hits = []; let mode = 'ok';
+  const geo = http.createServer((req, res) => {
+    const u = new URL(req.url, 'http://x'); hits.push({ path: u.pathname, key: u.searchParams.get('apiKey'), q: u.searchParams });
+    if (mode === '401') { res.statusCode = 401; return res.end('bad key'); }
+    if (mode === '429') { res.statusCode = 429; return res.end('quota'); }
+    if (u.pathname === '/v1/staticmap') { res.setHeader('content-type', 'image/png'); return res.end(Buffer.from('89504e470d0a1a0a', 'hex')); }
+    res.setHeader('content-type', 'application/json');
+    const row = { formatted: 'Villavicencio, Meta, Colombia', name: 'Villavicencio', city: 'Villavicencio', state: 'Meta', suburb: 'Apiay', lat: 4.142, lon: -73.6266, country_code: 'co' };
+    res.end(JSON.stringify(u.pathname.endsWith('/reverse') ? { results: [row] } : { results: [row, { formatted: 'Vda. La Esperanza, Granada, Meta', hamlet: 'La Esperanza', town: 'Granada', state: 'Meta', lat: 3.54, lon: -73.7 }] }));
+  }).listen(0);
+  process.env.GEOAPIFY_API_BASE = `http://127.0.0.1:${geo.address().port}`; process.env.GEOAPIFY_MAPS_BASE = process.env.GEOAPIFY_API_BASE;
+  const raw = (jar, path) => api(new Request(`https://app.example.com${path}`, { headers: { cookie: Object.entries(jar.c).map(([k, v]) => `${k}=${v}`).join('; ') } }));
+
+  delete process.env.GEOAPIFY_API_KEY;
+  r = await staff.call('GET', '/api/staff/geo/estado');
+  ok(r.data.activo === false, 'mapa: sin clave el sistema lo indica (la app sigue funcionando sin mapa)');
+  r = await staff.call('GET', '/api/staff/geo/buscar?q=Villavicencio');
+  ok(r.status === 503 && r.data.error === 'geo_not_configured', 'mapa: sin clave la búsqueda responde 503 claro');
+
+  process.env.GEOAPIFY_API_KEY = 'clave-secreta-de-prueba';
+  r = await staff.call('GET', '/api/staff/geo/estado');
+  ok(r.data.activo === true, 'mapa: con la clave en el servidor queda activo');
+  r = await new Jar().call('GET', '/api/staff/geo/buscar?q=Villavicencio');
+  ok(r.status === 401, 'mapa: solo lo usan personas con sesión');
+  r = await staff.call('GET', '/api/staff/geo/buscar?q=Vi');
+  ok(r.status === 400, 'mapa: pide al menos 3 letras');
+  r = await staff.call('GET', '/api/staff/geo/buscar?q=Villavicencio');
+  ok(r.status === 200 && r.data.resultados.length === 2 && r.data.resultados[0].departamento === 'Meta' && r.data.resultados[0].municipio === 'Villavicencio' && r.data.resultados[0].vereda === 'Apiay', 'mapa: busca un lugar y separa departamento, municipio y vereda');
+  ok(r.data.resultados[1].municipio === 'Granada' && r.data.resultados[1].vereda === 'La Esperanza', 'mapa: entiende pueblos y veredas (town/hamlet)');
+  ok(!JSON.stringify(r.data).includes('clave-secreta-de-prueba'), 'mapa: la clave nunca viaja en la respuesta');
+  const h1 = hits.at(-1);
+  ok(h1.key === 'clave-secreta-de-prueba' && h1.q.get('filter') === 'countrycode:co' && h1.q.get('lang') === 'es', 'mapa: el servidor usa la clave, limita a Colombia y pide español');
+  const n0 = hits.length;
+  await staff.call('GET', '/api/staff/geo/buscar?q=villavicencio');
+  ok(hits.length === n0, 'mapa: repetir una búsqueda no gasta créditos (caché)');
+  r = await staff.call('GET', '/api/staff/geo/inversa?lat=4.142&lng=-73.6266');
+  ok(r.status === 200 && r.data.lugar.municipio === 'Villavicencio' && r.data.lugar.lat === 4.142, 'mapa: de unas coordenadas saca el municipio y el departamento');
+  r = await staff.call('GET', '/api/staff/geo/inversa?lat=999&lng=0');
+  ok(r.status === 400, 'mapa: rechaza coordenadas imposibles');
+  let img = await raw(staff, '/api/staff/geo/mapa?lat=4.142&lng=-73.6266');
+  const bytes = Buffer.from(await img.arrayBuffer());
+  ok(img.status === 200 && img.headers.get('content-type') === 'image/png' && bytes.length === 8 && /private/.test(img.headers.get('cache-control')), 'mapa: entrega la imagen del terreno con caché privada');
+  const hm = hits.at(-1);
+  ok(hm.path === '/v1/staticmap' && hm.q.get('center') === 'lonlat:-73.6266,4.142' && /^lonlat:-73.6266,4.142;/.test(hm.q.get('marker')) && hm.key === 'clave-secreta-de-prueba', 'mapa: centra y marca el punto (longitud primero, como pide Geoapify)');
+  img = await raw(staff, '/api/staff/geo/mapa?lat=abc&lng=1');
+  ok(img.status === 400, 'mapa: la imagen rechaza coordenadas inválidas');
+  mode = '401';
+  r = await staff.call('GET', '/api/staff/geo/buscar?q=Otro lugar distinto');
+  ok(r.status === 502 && r.data.error === 'geo_key_invalid' && !JSON.stringify(r.data).includes('clave-secreta'), 'mapa: si la clave es inválida avisa sin mostrarla');
+  mode = '429';
+  r = await staff.call('GET', '/api/staff/geo/buscar?q=Lugar sin creditos');
+  ok(r.status === 503 && r.data.error === 'geo_quota', 'mapa: si se acaban los créditos lo explica');
+  mode = 'ok';
+  let last = 0; for (let i = 0; i < 100; i++) { const x = await maria.call('GET', `/api/staff/geo/buscar?q=Lugar numero ${i}`); last = x.status; if (last === 429) break; }
+  ok(last === 429, 'mapa: límite por minuto para que un negocio no agote los créditos');
+  delete process.env.GEOAPIFY_API_KEY; geo.close();
+}
+
 console.log(`\n${pass} correctas, ${fail} con error`);
 llm.close();
 process.exit(fail ? 1 : 0);

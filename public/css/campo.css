@@ -166,3 +166,14 @@ button.d-att__it { width: 100%; text-align: left; }
 .lk-wa { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; } .lk-wa:empty { display: none; }
 .lk-wa code { flex: 1 1 260px; min-width: 0; padding: 10px 12px; border-radius: var(--r-md); background: var(--page); font-size: var(--fs-sm); overflow-wrap: anywhere; }
 .lk-prev { margin-top: -8px; color: var(--text-2); font-size: var(--fs-sm); overflow-wrap: anywhere; } .lk-prev b { color: var(--text); font-weight: 600; }
+
+/* ── Mapa ── */
+.tr-geo { position: relative; } .tr-geo[hidden], .tr-mapprev[hidden], .tr-sugg[hidden] { display: none; }
+.tr-sugg { position: absolute; left: 0; right: 0; top: 78px; z-index: 5; display: grid; max-height: 280px; overflow-y: auto; background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--r-md); box-shadow: var(--shadow-3); padding: 4px; }
+.tr-sugg__it { display: flex; align-items: flex-start; gap: 10px; width: 100%; text-align: left; padding: 10px 12px; border-radius: 6px; } .tr-sugg__it:hover, .tr-sugg__it:focus-visible { background: var(--page); }
+.tr-sugg__it svg { flex: none; margin-top: 3px; color: var(--accent-strong); } .tr-sugg__it span { display: grid; min-width: 0; } .tr-sugg__it strong { font-weight: 500; font-size: var(--fs-sm); } .tr-sugg__it small { color: var(--text-2); font-size: 13px; overflow-wrap: anywhere; }
+.tr-sugg__note { padding: 12px; color: var(--text-2); font-size: var(--fs-sm); }
+.tr-here { margin: -4px 0 20px; }
+.tr-mapprev { margin: 0 0 16px; border-radius: var(--r-md); overflow: hidden; border: 1px solid var(--edge); } .tr-mapprev img { width: 100%; aspect-ratio: 640 / 280; object-fit: cover; background: var(--page); } .tr-mapprev small { display: block; padding: 8px 12px; color: var(--text-2); font-size: 13px; }
+.tr-map { display: block; border-radius: var(--r-md); overflow: hidden; background: var(--page); aspect-ratio: 900 / 480; } .tr-map[hidden] { display: none; } .tr-map img { width: 100%; height: 100%; object-fit: cover; }
+.tr-addplace { display: grid; gap: 10px; justify-items: start; }
