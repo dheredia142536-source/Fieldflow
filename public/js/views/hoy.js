@@ -1,479 +1,296 @@
-// Dashboard del negocio: indicadores, línea de tiempo del día, tendencias, capacidad e insights.
-// Todo se calcula en el navegador a partir de UNA respuesta del servidor: filtrar o cambiar de periodo es instantáneo.
-import { get, post } from '../api.js';
-import { h, clear, avatar, openSheet, toast, busy } from '../ui.js';
+// Panel del negocio (Dashboard): cifras del día con su cambio, ingresos por rango, agenda, atención pendiente,
+// embudo de contactos, caja y stock de hoy y bandeja. Se pinta al instante con lo último guardado y se actualiza en segundo plano.
+import { get } from '../api.js';
+import { h, clear, avatar } from '../ui.js';
 import { icon } from '../icons.js';
 import { t, getLang } from '../i18n.js';
-import { state, pref } from '../state.js';
-import { fmtDay, fmtIsoTime, fmtTime, fmtWhen } from '../time.js';
-import { svcLabel, parcelColor, statusBadge, setPalette } from '../components.js';
-import { areaChart, donut, fieldArt, hbars, heatmap, ring, sparkline } from '../charts.js';
-import { openCitaSheet, openNewCitaSheet } from './cita-sheet.js';
-import { HOURS, addDays, answer, buildModel, parse, startMs } from './dash-model.js';
+import { state } from '../state.js';
+import { addDays, fmtDay, fmtRelative, fmtTime, hmFrom, startOfWeek, todayLocal, toLocal } from '../time.js';
+import { parcelColor } from '../components.js';
+import { card, deltaChip, emptyNote, kpi, linkBtn, seg, skel } from '../dui.js';
+import { money, moneyShort, int, pctChange } from '../fmt.js';
+import { openNewCitaSheet } from './cita-sheet.js';
 
-const T = (k, v) => t(`dash.${k}`, v);
-
-const WIDGETS = ['hero', 'kpis', 'goal', 'timeline', 'trend', 'ask', 'insights', 'upcoming', 'services', 'resources', 'origin', 'heat', 'capacity', 'funnel', 'clients', 'status', 'activity', 'actions'];
-const RANGES = [7, 30, 90];
-let cache = null; // última respuesta: se pinta al instante y se refresca en segundo plano
-
-// ── Utilidades ──────────────────────────────────────────────────────────────────────────────────
-const nf = (n, d = 0) => new Intl.NumberFormat(getLang() === 'en' ? 'en-US' : 'es-CO', { maximumFractionDigits: d, minimumFractionDigits: d }).format(n);
-const dowName = (i, style = 'long') => new Intl.DateTimeFormat(getLang() === 'en' ? 'en-US' : 'es-CO', { weekday: style, timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 0, 5 + i, 12)));
+const KEY = 'ff_panel_v1';
+const ETAPAS = ['nuevo', 'contactado', 'cotizado', 'cerrado', 'perdido'];
+const RANGES = [{ id: '1w', days: 7 }, { id: '1m', days: 30 }, { id: '3m', days: 90 }, { id: '6m', days: 180 }, { id: '1y', days: 365 }, { id: 'all', days: 0 }];
+const loc = () => (getLang() === 'en' ? 'en-US' : 'es-CO');
+const dow = (i, style = 'narrow') => new Intl.DateTimeFormat(loc(), { weekday: style, timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 0, 5 + i, 12)));
 const dayLong = (ymd) => fmtDay(ymd, { weekday: 'long', day: 'numeric', month: 'long' });
-const dayShort = (ymd) => fmtDay(ymd, { day: 'numeric', month: 'short' });
-const hourLabel = (hr) => fmtTime(`${String(hr).padStart(2, '0')}:00`);
+const monthName = (ym) => fmtDay(`${ym}-01`, { month: 'long', year: 'numeric' });
+const diffDays = (a, b) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 86400000);
 const svcName = (s) => (getLang() === 'en' ? s.en : s.es) || s.es;
-const cap1 = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-const rel = (ymd, hoy) => {
-  const n = Math.round((Date.parse(`${hoy}T12:00:00Z`) - Date.parse(`${ymd}T12:00:00Z`)) / 86400000);
-  return n <= 0 ? T('relToday') : n === 1 ? T('relYesterday') : T('relDays', { n });
-};
-const readPref = (k, d) => { try { return JSON.parse(pref(k) ?? 'null') ?? d; } catch { return d; } };
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
-// Convierte los parámetros de un texto (fechas, horas, servicios) a lo que se ve en pantalla.
-function fmtParams(p, key) {
-  const o = {};
-  for (const [k, v] of Object.entries(p || {})) {
-    if (k === 'ymd') o.ymd = dayLong(v);
-    else if (k === 'dow') o.dow = dowName(v);
-    else if (k === 'hour') o.hour = hourLabel(v);
-    else if (k === 'svc') o.svc = svcName(v);
-    else o[k] = typeof v === 'number' ? nf(v) : v;
-  }
-  if (p && p.n === 1 && key && t(`dash.${key}One`) !== `dash.${key}One`) return { o, key: `${key}One` };
-  return { o, key };
-}
-const say = (key, p) => { const r = fmtParams(p, key); return T(r.key, r.o); };
-
-function deltaChip(d, { invert = false, unit = '%', abs = false } = {}) {
-  if (d == null) return h('span', { class: 'dchip dchip--new' }, T('newBadge'));
-  const v = Math.round(d * 10) / 10;
-  if (Math.abs(v) < 0.5) return h('span', { class: 'dchip dchip--flat', 'aria-label': T('flat') }, '= 0');
-  const up = v > 0; const good = invert ? !up : up;
-  return h('span', { class: `dchip ${good ? 'dchip--good' : 'dchip--bad'}`, 'aria-label': `${up ? T('chipUp') : T('chipDown')} ${nf(Math.abs(v))}${unit}` },
-    icon(up ? 'trendUp' : 'trendDown', 14), `${nf(Math.abs(v), abs ? 1 : 0)}${unit}`);
-}
-
-function card(id, title, { sub, actions, cls = '', body, label } = {}) {
-  const tid = `dc-${id}`;
-  return h('section', { class: `dc dc--${id} ${cls}`, 'aria-labelledby': tid, 'data-w': id },
-    h('header', { class: 'dc__head' }, h('div', null, h('h2', { id: tid }, title || label), sub ? h('p', null, sub) : null), actions ? h('div', { class: 'dc__act' }, actions) : null),
-    body);
-}
-
-// ── Vista principal ─────────────────────────────────────────────────────────────────────────────
-export default async function hoy({ main, isCurrent, rerender, go, toggleTheme }) {
-  const ui = {
-    dias: RANGES.includes(+pref('dash_dias')) ? +pref('dash_dias') : 30,
-    svc: new Set(), rec: new Set(),
-    metric: 'citas', tl: window.innerWidth < 720 ? 'list' : 'line', hidden: new Set(readPref('dash_hidden', [])),
-    goal: Math.max(5, Math.min(2000, +pref('dash_goal') || 40)), animate: true,
+// Guarda sólo lo necesario para el primer pintado del siguiente arranque.
+function slim(d) {
+  const hoy = d.dash?.hoy || todayLocal();
+  const lo = addDays(hoy, -45);
+  return {
+    ...d,
+    dash: d.dash && { ...d.dash, citas: d.dash.citas.filter((c) => c[0] >= lo), clientes: [], capacidad: [] },
+    crm: d.crm && { etapas: d.crm.etapas, contactos: d.crm.contactos.map((c) => ({ id: c.id, nombre: c.nombre, etapa: c.etapa, valor: c.valor, creado: c.creado, proxima_fecha: c.proxima_fecha, proxima_accion: c.proxima_accion })) },
+    fin: d.fin && { ...d.fin, dias: d.fin.dias.slice(-800) },
   };
-  let data = cache?.data || null; let res = cache?.res || null; let M = null; let updated = cache?.at || 0;
-  let timers = [];
+}
 
-  const root = h('div', { class: 'dash' });
+// ── Ingresos: agrupa la serie diaria en barras según el rango ───────────────────────────────────
+function buildBuckets(fin, hoy, range) {
+  const map = new Map((fin?.dias || []).map(([d, i, e]) => [d, [i, e]]));
+  let days = RANGES.find((r) => r.id === range).days;
+  if (!days) { const first = fin?.dias?.[0]?.[0]; days = Math.max(30, first ? diffDays(first, hoy) + 1 : 30); }
+  const start = addDays(hoy, -(days - 1));
+  const mode = days <= 31 ? 'day' : days <= 200 ? 'week' : 'month';
+  const keyOf = (ymd) => (mode === 'day' ? ymd : mode === 'week' ? startOfWeek(ymd) : ymd.slice(0, 7));
+  const out = []; const idx = new Map();
+  for (let i = 0; i < days; i++) {
+    const ymd = addDays(start, i); const k = keyOf(ymd);
+    if (!idx.has(k)) { idx.set(k, out.length); out.push({ key: k, mode, ing: 0, egr: 0 }); }
+    const [ing, egr] = map.get(ymd) || [0, 0];
+    out[idx.get(k)].ing += ing; out[idx.get(k)].egr += egr;
+  }
+  let prev = 0;
+  if (range !== 'all') for (let i = 1; i <= days; i++) prev += (map.get(addDays(start, -i)) || [0])[0];
+  const total = out.reduce((a, b) => a + b.ing, 0);
+  return { buckets: out, total, prev: range === 'all' ? null : prev, days, mode };
+}
+const bucketLabel = (b, range) => (b.mode === 'day' ? (range === '1w' ? dow(((new Date(`${b.key}T12:00:00Z`).getUTCDay() + 6) % 7), 'short') : String(Number(b.key.slice(8)))) : b.mode === 'week' ? fmtDay(b.key, { day: 'numeric', month: 'short' }) : cap(fmtDay(`${b.key}-01`, { month: 'short' })));
+const bucketTitle = (b) => (b.mode === 'day' ? dayLong(b.key) : b.mode === 'week' ? t('pn.weekOf', { d: fmtDay(b.key, { day: 'numeric', month: 'long' }) }) : cap(monthName(b.key)));
+function niceMax(v) {
+  if (v <= 0) return 100000;
+  const p = 10 ** Math.floor(Math.log10(v)); const n = v / p;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p;
+}
+
+function revenueCard(S, data, rerender) {
+  const hoy = data.hoy;
+  const { buckets, total, prev, mode } = buildBuckets(data.fin, hoy, S.range);
+  const pct = prev == null ? null : pctChange(total, prev);
+  const max = niceMax(Math.max(...buckets.map((b) => Math.max(b.ing, b.egr)), 0));
+  const hasData = buckets.some((b) => b.ing > 0 || b.egr > 0);
+  let sel = Math.min(S.sel ?? buckets.length - 1, buckets.length - 1);
+
+  const tip = h('div', { class: 'd-tip', role: 'status', 'aria-live': 'polite' });
+  const bars = h('div', { class: 'd-chart__bars' });
+  const xs = h('div', { class: 'd-chart__x', 'aria-hidden': 'true' });
+  const plot = h('div', { class: 'd-chart__plot' },
+    h('div', { class: 'd-chart__grid', 'aria-hidden': 'true' }, [0, 1, 2, 3].map(() => h('i'))), bars, tip);
+  const yl = h('div', { class: 'd-chart__y', 'aria-hidden': 'true' }, [1, 0.75, 0.5, 0.25, 0].map((f) => h('span', null, f ? moneyShort(max * f) : '0')));
+  const btns = buckets.map((b, i) => {
+    const el = h('button', { type: 'button', class: 'd-bar', style: `--h:${(b.ing / max) * 100}%;--e:${(b.egr / max) * 100}%`, 'aria-label': `${bucketTitle(b)}: ${money(b.ing)}` },
+      h('span', { class: 'd-bar__fill' }), b.egr > 0 ? h('span', { class: 'd-bar__out' }) : null);
+    el.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') select(i); });
+    el.addEventListener('focus', () => select(i));
+    el.addEventListener('click', () => select(i));
+    return el;
+  });
+  bars.append(...btns);
+  const xl = buckets.map((b) => h('span', null, bucketLabel(b, S.range)));
+  xs.append(...xl);
+
+  function thin() {
+    const w = plot.clientWidth || 300; const per = w / buckets.length;
+    const step = Math.max(1, Math.ceil(buckets.length / Math.max(2, Math.floor(w / (mode === 'week' ? 64 : mode === 'month' ? 44 : 34)))));
+    xl.forEach((s, i) => { s.style.visibility = i % step === (buckets.length - 1) % step ? 'visible' : 'hidden'; });
+    return per;
+  }
+  function select(i) {
+    sel = i; S.sel = i;
+    btns.forEach((b, j) => b.classList.toggle('is-sel', j === i));
+    const b = buckets[i]; const p = i > 0 ? buckets[i - 1] : null;
+    const ch = p && p.ing > 0 ? pctChange(b.ing, p.ing) : null;
+    clear(tip);
+    tip.append(h('div', { class: 'd-tip__t' }, bucketTitle(b)),
+      h('div', { class: 'd-tip__v' }, money(b.ing), deltaChip(ch)),
+      h('div', { class: 'd-tip__s' }, h('i', { class: 'd-dash' }), `${t('pn.expenses')} ${money(b.egr)}`));
+    requestAnimationFrame(() => {
+      const w = plot.clientWidth; const tw = tip.offsetWidth || 150;
+      const x = ((i + 0.5) / buckets.length) * w;
+      tip.style.left = `${Math.max(tw / 2, Math.min(w - tw / 2, x))}px`;
+    });
+  }
+  requestAnimationFrame(() => { thin(); select(sel); });
+  if ('ResizeObserver' in window) { const ro = new ResizeObserver(() => { thin(); select(sel); }); ro.observe(plot); S.ro?.disconnect(); S.ro = ro; }
+
+  const rangeSeg = seg(RANGES.map((r) => ({ id: r.id, label: t(`pn.r_${r.id}`) })), S.range, (id) => { S.range = id; S.sel = null; rerender(); }, { label: t('pn.range'), cls: 'd-seg--scroll' });
+  return card(null, { cls: 'd-revenue', id: 'ingresos' },
+    h('div', { class: 'd-revenue__head' },
+      h('div', null, h('h2', { class: 'd-card__title' }, t('pn.income')),
+        h('div', { class: 'd-revenue__total' }, h('strong', null, money(total)), prev != null ? h('span', { class: 'd-revenue__vs' }, deltaChip(pct), h('span', null, t('pn.vsPrev'))) : null)),
+      rangeSeg),
+    h('div', { class: `d-chart${hasData ? '' : ' is-empty'}`, role: 'group', 'aria-label': t('pn.chartLabel') },
+      yl, h('div', { class: 'd-chart__main' }, plot, xs),
+      hasData ? null : h('div', { class: 'd-chart__empty' }, h('p', null, t('pn.noIncome')), h('a', { class: 'btn btn--secondary btn--sm', href: '#/dia' }, icon('plus', 16), t('pn.registerIncome')))),
+    h('div', { class: 'd-legend' }, h('span', null, h('i', { class: 'd-sw' }), t('pn.income')), h('span', null, h('i', { class: 'd-dash' }), t('pn.expenses'))));
+}
+
+// ── Calendario del mes con la agenda del día elegido ──────────────────────────────────────────
+function calendarCard(S, data, rerender) {
+  const hoy = data.hoy; const d = data.dash;
+  S.month ||= hoy.slice(0, 7); S.day ||= hoy;
+  const byDay = new Map();
+  for (const c of d?.citas || []) if (c[5] !== 2) { if (!byDay.has(c[0])) byDay.set(c[0], []); byDay.get(c[0]).push(c); }
+  const first = `${S.month}-01`;
+  const lead = (new Date(`${first}T12:00:00Z`).getUTCDay() + 6) % 7;
+  const len = new Date(Date.UTC(Number(S.month.slice(0, 4)), Number(S.month.slice(5)), 0)).getUTCDate();
+  const shift = (n) => { const dt = new Date(`${first}T12:00:00Z`); dt.setUTCMonth(dt.getUTCMonth() + n); S.month = dt.toISOString().slice(0, 7); rerender(); };
+  const grid = h('div', { class: 'd-cal__grid', role: 'grid', 'aria-label': cap(monthName(S.month)) },
+    [0, 1, 2, 3, 4, 5, 6].map((i) => h('span', { class: 'd-cal__dow', 'aria-hidden': 'true' }, dow(i))),
+    Array.from({ length: lead }, () => h('span')),
+    Array.from({ length: len }, (_, i) => {
+      const ymd = `${S.month}-${String(i + 1).padStart(2, '0')}`;
+      const n = byDay.get(ymd)?.length || 0;
+      const b = h('button', { type: 'button', class: `d-cal__day${ymd === hoy ? ' is-today' : ''}${ymd === S.day ? ' is-sel' : ''}${n ? ' has' : ''}`, 'aria-pressed': String(ymd === S.day), 'aria-label': `${dayLong(ymd)}${n ? `, ${t('pn.nApps', { n })}` : ''}` }, String(i + 1));
+      b.addEventListener('click', () => { S.day = ymd; rerender(); });
+      return b;
+    }));
+  const list = (byDay.get(S.day) || []).sort((a, b) => a[1] - b[1]);
+  const cl = d?.clientes || [];
+  return card(null, { cls: 'd-cal', id: 'agenda' },
+    h('div', { class: 'd-cal__head' },
+      h('h2', { class: 'd-card__title' }, cap(monthName(S.month))),
+      h('div', { class: 'd-cal__nav' },
+        h('button', { class: 'btn btn--ghost btn--icon btn--sm', type: 'button', 'aria-label': t('pn.prevMonth'), onclick: () => shift(-1) }, icon('left', 16)),
+        h('button', { class: 'btn btn--ghost btn--icon btn--sm', type: 'button', 'aria-label': t('pn.nextMonth'), onclick: () => shift(1) }, icon('right', 16)))),
+    grid,
+    h('div', { class: 'd-cal__agenda' },
+      h('div', { class: 'd-cal__daytitle' }, cap(dayLong(S.day)), linkBtn('#/calendario', t('pn.fullAgenda'))),
+      list.length ? h('ul', { class: 'd-agenda' }, list.slice(0, 5).map((c) => {
+        const s = d.servicios[c[3]]; const r = d.recursos[c[4]];
+        return h('li', { class: 'd-agenda__it' }, h('span', { class: 'd-agenda__bar', style: `background:${parcelColor(s?.id)}` }),
+          h('div', { class: 'd-agenda__main' }, h('strong', null, s ? svcName(s) : ''), h('span', null, [r?.nombre, cl[c[7]]?.[0]].filter(Boolean).join(' · '))),
+          h('time', { class: 'd-agenda__t' }, fmtTime(hmFrom(c[1]))));
+      }).concat(list.length > 5 ? [h('li', { class: 'd-agenda__more' }, t('pn.more', { n: list.length - 5 }))] : [])) : h('p', { class: 'd-calm' }, t('pn.noApps'))));
+}
+
+// ── Requiere atención ─────────────────────────────────────────────────────────────────────────
+function attentionCard(data) {
+  const hoy = data.hoy; const items = [];
+  const att = (data.dash?.chats || []).filter((c) => c.att).length;
+  if (att) items.push({ ic: 'chat', tone: 'warn', text: t('pn.attChats', { n: att }), href: '#/chats' });
+  const due = (data.crm?.contactos || []).filter((c) => c.proxima_fecha && c.proxima_fecha <= hoy && !['cerrado', 'perdido'].includes(c.etapa));
+  if (due.length) items.push({ ic: 'users', tone: 'warn', text: t('pn.attFollow', { n: due.length }), sub: due.slice(0, 2).map((c) => c.nombre).join(', '), href: '#/crm' });
+  const low = (data.dia?.productos || []).filter((p) => p.stock_minimo > 0 && p.esperado <= p.stock_minimo);
+  if (low.length) items.push({ ic: 'alert', tone: 'warn', text: t('pn.attLow', { n: low.length }), sub: low.slice(0, 3).map((p) => p.nombre).join(', '), href: '#/dia/' + hoy + '/productos' });
+  const ayer = addDays(hoy, -1);
+  const had = (data.fin?.dias || []).some((x) => x[0] === ayer);
+  if (had && !(data.fin?.cierres || []).some((c) => c.dia === ayer && c.cerrado)) items.push({ ic: 'clock', tone: 'info', text: t('pn.attYesterday'), href: `#/dia/${ayer}/cierre` });
+  return card(t('pn.attention'), { cls: 'd-att' },
+    items.length ? h('ul', { class: 'd-attlist' }, items.map((x) => h('li', null, h('a', { class: `d-att__it is-${x.tone}`, href: x.href },
+      h('span', { class: 'd-att__ic', 'aria-hidden': 'true' }, icon(x.ic, 18)), h('span', { class: 'd-att__tx' }, h('strong', null, x.text), x.sub ? h('small', null, x.sub) : null), icon('right', 16)))))
+      : h('div', { class: 'd-allgood' }, h('span', { 'aria-hidden': 'true' }, icon('check', 22)), h('div', null, h('strong', null, t('pn.allGood')), h('p', null, t('pn.allGoodSub')))));
+}
+
+// ── Embudo de contactos ───────────────────────────────────────────────────────────────────────
+function funnelCard(data) {
+  const cs = data.crm?.contactos || [];
+  const rows = ETAPAS.map((e) => { const l = cs.filter((c) => c.etapa === e); return { e, n: l.length, v: l.reduce((a, c) => a + (c.valor || 0), 0) }; });
+  const max = Math.max(1, ...rows.map((r) => r.n));
+  return card(t('pn.funnel'), { sub: t('pn.funnelSub', { n: cs.length }), actions: linkBtn('#/crm', t('pn.openCrm')), cls: 'd-funnel' },
+    cs.length ? h('ul', { class: 'd-funrows' }, rows.map((r) => h('li', null,
+      h('a', { class: 'd-fun', href: '#/crm', 'aria-label': `${t(`crm.st_${r.e}`)}: ${r.n}` },
+        h('span', { class: 'd-fun__n' }, t(`crm.st_${r.e}`)),
+        h('span', { class: 'd-fun__track' }, h('i', { class: `st-${r.e}`, style: `width:${Math.max(r.n ? 6 : 0, (r.n / max) * 100)}%` })),
+        h('span', { class: 'd-fun__c' }, String(r.n)), h('span', { class: 'd-fun__v' }, r.v ? moneyShort(r.v) : '')))))
+      : emptyNote(t('pn.noContacts'), h('a', { class: 'btn btn--secondary btn--sm', href: '#/crm' }, icon('plus', 16), t('crm.add'))));
+}
+
+// ── Caja y stock de hoy ───────────────────────────────────────────────────────────────────────
+function cashCard(data) {
+  const d = data.dia; const hoy = data.hoy;
+  if (!d) return card(t('pn.todayBox'), { cls: 'd-box' }, skel('d-skel--row'), skel('d-skel--row'));
+  const low = d.productos.filter((p) => p.stock_minimo > 0 && p.esperado <= p.stock_minimo);
+  const r = d.resumen;
+  const row = (l, v, cls = '') => h('div', { class: `d-box__row ${cls}` }, h('span', null, l), h('strong', null, v));
+  return card(t('pn.todayBox'), { sub: dayLong(hoy), cls: 'd-box', actions: h('span', { class: `badge ${d.cerrado ? 'badge--ok' : 'badge--info'}` }, h('i', { class: 'dot' }), d.cerrado ? t('day.closed') : t('day.open')) },
+    h('div', { class: 'd-box__rows' }, row(t('day.opening'), money(d.apertura)), row(t('day.income'), money(r.ingresos), 'is-in'), row(t('day.expenses'), money(r.egresos), 'is-out'), row(t('day.expectedCash'), money(r.esperado_efectivo), 'is-total')),
+    h('div', { class: 'd-box__stock' }, h('span', null, icon('leaf', 16), t('pn.products', { n: d.productos.length })), low.length ? h('span', { class: 'badge badge--warn' }, t('pn.lowN', { n: low.length })) : null),
+    h('div', { class: 'd-box__act' },
+      h('a', { class: 'btn btn--secondary btn--sm', href: `#/dia/${hoy}` }, icon('plus', 16), t('pn.register')),
+      d.cerrado ? null : h('a', { class: 'btn btn--primary btn--sm', href: `#/dia/${hoy}/cierre` }, icon('check', 16), t('pn.closeDay'))));
+}
+
+// ── Bandeja ───────────────────────────────────────────────────────────────────────────────────
+function inboxCard(data) {
+  const chats = (data.dash?.chats || []).slice(0, 4);
+  return card(t('pn.inbox'), { actions: linkBtn('#/chats', t('pn.openInbox')), cls: 'd-inbox' },
+    chats.length ? h('ul', { class: 'd-chatlist' }, chats.map((c) => h('li', null, h('a', { class: 'd-chat', href: '#/chats' },
+      avatar(c.nombre || c.tel), h('span', { class: 'd-chat__main' }, h('strong', null, c.nombre || `+${c.tel}`), h('small', null, `${c.por === 'humano' ? t('pn.byYou') : t('pn.byBot')} · ${c.canal === 'whatsapp' ? 'WhatsApp' : 'Web'}`)),
+      h('span', { class: 'd-chat__meta' }, c.en ? h('time', null, fmtRelative(c.en)) : null, c.att ? h('span', { class: 'badge badge--warn' }, t('pn.needsYou')) : null)))))
+      : emptyNote(t('pn.noChats')));
+}
+
+function kpis(data) {
+  const hoy = data.hoy; const ayer = addDays(hoy, -1); const sem = addDays(hoy, -7);
+  const fin = new Map((data.fin?.dias || []).map(([d, i]) => [d, i]));
+  const ing = fin.get(hoy) || 0;
+  const apps = (ymd) => (data.dash?.citas || []).filter((c) => c[0] === ymd && c[5] !== 2).length;
+  const cs = data.crm?.contactos || [];
+  const since = (n) => toLocal(new Date(Date.now() - n * 86400000)).ymd;
+  const inRange = (c, a, b) => { const y = toLocal(c.creado).ymd; return y > a && y <= b; };
+  const nuevos = cs.filter((c) => inRange(c, since(7), hoy)).length; const nuevosPrev = cs.filter((c) => inRange(c, since(14), since(7))).length;
+  const att = (data.dash?.chats || []).filter((c) => c.att).length;
+  return h('div', { class: 'd-kpis' },
+    kpi({ ic: 'doc', label: t('pn.kIncome'), value: money(ing), pct: pctChange(ing, fin.get(ayer) || 0), caption: t('pn.vsYesterday'), href: '#/dia' }),
+    kpi({ ic: 'calendar', label: t('pn.kApps'), value: int(apps(hoy)), pct: pctChange(apps(hoy), apps(sem)), caption: t('pn.vsLastWeek'), href: '#/calendario' }),
+    kpi({ ic: 'users', label: t('pn.kContacts'), value: int(nuevos), pct: pctChange(nuevos, nuevosPrev), caption: t('pn.last7'), href: '#/crm' }),
+    kpi({ ic: 'chat', label: t('pn.kAttention'), value: int(att), caption: att ? t('pn.waiting') : t('pn.noWaiting'), href: '#/chats', invert: true }));
+}
+
+const greet = () => { const hr = Number(toLocal(new Date()).hm.slice(0, 2)); return t(hr < 12 ? 'pn.gMorning' : hr < 19 ? 'pn.gAfternoon' : 'pn.gEvening'); };
+
+export default function hoy({ main, go, isCurrent }) {
+  let data = null;
+  try { data = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { /* sin caché */ }
+  const S = { range: '1m', sel: null, month: null, day: null };
+  const root = h('div', { class: 'd-page' });
   main.append(root);
+  let last = '';
 
-  // Un solo viaje al servidor para todo (en paralelo) y el dashboard queda listo.
-  const load = async () => {
-    const [d, r] = await Promise.all([get('/api/staff/dashboard'), get('/api/staff/resumen')]);
-    data = d; res = r; updated = Date.now(); cache = { data, res, at: updated };
-    state.attention = r.atencion.length;
-    setPalette(d.servicios.map((s) => ({ id: s.id })));
+  const header = () => {
+    const first = (state.staff?.nombre || '').trim().split(/\s+/)[0];
+    return h('header', { class: 'd-head' },
+      h('div', null, h('h1', null, first ? `${greet()}, ${first}` : greet()), h('p', null, cap(dayLong(todayLocal())))),
+      h('div', { class: 'd-head__act' },
+        h('button', { class: 'btn btn--secondary btn--sm d-head__new', type: 'button', onclick: () => openNewCitaSheet({ onDone: load }) }, icon('plus', 16), t('nav.newCita')),
+        h('a', { class: 'btn btn--primary btn--sm', href: `#/dia/${todayLocal()}/cierre` }, icon('check', 16), t('pn.closeDay'))));
   };
 
-  // ── pintar ────────────────────────────────────────────────────────────────────────────────────
-  function stopCharts() { root.querySelectorAll('.chart__box').forEach((n) => n._stop?.()); }
-  function refresh() { paint(); }
-
-  function paint() {
-    if (!data) return;
-    stopCharts();
-    const rows = data._rows || (data._rows = parse(data));
-    M = buildModel(data, { dias: ui.dias, svc: ui.svc, rec: ui.rec, rows });
-    const scroll = window.scrollY;
-    const grid = h('div', { class: `dbento${ui.animate ? ' is-intro' : ''}` });
-    const w = (id, node) => { if (!ui.hidden.has(id) && node) grid.append(node); };
-    const empty = !data.citas.length;
-
-    w('hero', heroCard());
-    w('kpis', kpiGrid());
-    w('timeline', timelineCard());
-    if (empty) grid.append(emptyCard());
-    w('trend', trendCard());
-    w('ask', askCard());
-    w('insights', insightsCard());
-    w('upcoming', upcomingCard());
-    w('services', servicesCard());
-    w('resources', resourcesCard());
-    w('origin', originCard());
-    w('heat', heatCard());
-    w('capacity', capacityCard());
-    w('funnel', funnelCard());
-    w('clients', clientsCard());
-    w('status', statusCard());
-    w('activity', activityCard());
-    w('actions', actionsCard());
-
-    [...grid.children].forEach((c, i) => c.style.setProperty('--n', String(i)));
+  const paint = () => {
+    S.ro?.disconnect();
+    const y = window.scrollY;
     clear(root);
-    root.append(header(), filtersBar(), grid);
-    window.scrollTo(0, scroll);
-    startNowTicker();
-  }
-
-  // ── encabezado ────────────────────────────────────────────────────────────────────────────────
-  function header() {
-    const hr = new Date(Date.now() - 5 * 3600000).getUTCHours();
-    const hello = hr < 12 ? 'hoy.morning' : hr < 19 ? 'hoy.afternoon' : 'hoy.evening';
-    const seg = h('div', { class: 'seg', role: 'group', 'aria-label': T('rangeLabel') }, RANGES.map((n) => h('button', { type: 'button', 'aria-pressed': String(ui.dias === n), onclick: () => { ui.dias = n; pref('dash_dias', String(n)); refresh(); } }, T(`r${n}`))));
-    const spin = h('button', { class: 'btn btn--ghost btn--icon btn--sm', type: 'button', 'aria-label': T('refresh'), title: T('refresh'), onclick: async (e) => { const b = e.currentTarget; b.classList.add('is-spin'); try { await load(); paint(); } catch (er) { toast(er.message, true); } b.classList.remove('is-spin'); } }, icon('refresh', 18));
-    const time = new Date(updated || Date.now());
-    return h('header', { class: 'dash__head' },
-      h('div', { class: 'dash__hello' }, h('h1', null, h('span', null, t(hello)), state.pub?.nombre ? h('em', null, `, ${state.pub.nombre}`) : null), h('p', null, cap1(dayLong(data.hoy)), ' · ', h('span', { class: 'muted' }, T('updated', { time: fmtTime(`${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}`) })))),
-      h('div', { class: 'dash__tools' },
-        h('button', { class: 'dsearch', type: 'button', onclick: openPalette, 'aria-label': T('search') }, icon('search', 18), h('span', null, T('search')), h('kbd', null, 'Ctrl K')),
-        seg, spin,
-        h('button', { class: 'btn btn--ghost btn--icon btn--sm', type: 'button', 'aria-label': T('customize'), title: T('customize'), onclick: openCustomize }, icon('sliders', 18)),
-        h('button', { class: 'btn btn--ghost btn--icon btn--sm', type: 'button', 'aria-label': T('export'), title: T('export'), onclick: exportCsv }, icon('download', 18)),
-        h('button', { class: 'btn btn--primary btn--sm', type: 'button', onclick: () => openNewCitaSheet({ onDone: async () => { await load(); paint(); } }) }, icon('plus', 16), t('cita.new'))));
-  }
-
-  function filtersBar() {
-    const n = ui.svc.size + ui.rec.size;
-    const chip = (label, active, onclick, color) => h('button', { class: 'dfchip', type: 'button', 'aria-pressed': String(active), onclick }, color ? h('i', { style: `background:${color}` }) : null, label);
-    const toggle = (set, i) => { if (set.has(i)) set.delete(i); else set.add(i); refresh(); };
-    return h('div', { class: 'filters', role: 'group', 'aria-label': T('filters') },
-      chip(T('fAll'), n === 0, () => { ui.svc.clear(); ui.rec.clear(); refresh(); }),
-      data.servicios.map((s, i) => chip(svcName(s), ui.svc.has(i), () => toggle(ui.svc, i), parcelColor(s.id))),
-      h('span', { class: 'filters__sep', 'aria-hidden': 'true' }),
-      data.recursos.filter((r) => r.activo).map((r) => { const i = data.recursos.indexOf(r); return chip(r.nombre, ui.rec.has(i), () => toggle(ui.rec, i)); }));
-  }
-
-  // ── hero (campo con puntos de lectura) ────────────────────────────────────────────────────────
-  function heroCard() {
-    const hoyN = res.citas_hoy.filter((c) => c.estado !== 'cancelada').length;
-    const hoyMin = res.citas_hoy.filter((c) => c.estado !== 'cancelada').reduce((a, c) => a + durMin(c), 0);
-    const capHoy = data.recursos.reduce((a, r, i) => a + (r.activo ? data.capacidad[i][(new Date(`${data.hoy}T12:00:00Z`).getUTCDay() + 6) % 7] : 0), 0);
-    const occ = capHoy ? Math.min(100, Math.round((hoyMin / capHoy) * 100)) : 0;
-    const hot = (cls, label, value, sub, href) => h('a', { class: `hot ${cls}`, href }, h('span', { class: 'hot__dot' }), h('span', { class: 'hot__card' }, h('small', null, label), h('b', null, value), h('em', null, sub)));
-    return h('section', { class: 'dc dc--hero', 'aria-label': T('w_hero') },
-      fieldArt(),
-      h('div', { class: 'hero__txt' }, h('span', { class: 'hero__tag' }, icon('leaf', 14), T('heroTag')), h('p', null, T('heroCap'))),
-      hot('hot--a', T('hotToday'), nf(hoyN), T('hotTodaySub', { h: nf(hoyMin / 60, 1) }), '#/calendario'),
-      hot('hot--b', T('hotOcc'), `${occ}%`, T('hotOccSub'), '#/calendario'),
-      hot('hot--c', T('hotChats'), nf(M.chats.att), M.chats.att ? T('hotChatsSub') : T('hotChatsOk'), '#/chats'));
-  }
-  const durMin = (c) => Math.max(0, Math.round((new Date(c.fin) - new Date(c.inicio)) / 60000));
-
-  // ── indicadores ───────────────────────────────────────────────────────────────────────────────
-  function kpiGrid() {
-    const k = M.kpi;
-    const tile = (id, tone, title, value, unit, d, extra, opts = {}) => h('article', { class: `kpi kpi--${tone}`, 'data-k': id },
-      h('header', null, h('h3', null, title), h('a', { class: 'kpi__go', href: opts.href || '#/calendario', 'aria-label': title }, icon('right', 16))),
-      h('div', { class: 'kpi__val' }, h('b', null, value), unit ? h('span', null, unit) : null),
-      h('div', { class: 'kpi__foot' }, deltaChip(d, opts), h('small', null, T('vsPrev'))),
-      extra);
-    return h('div', { class: 'kpis', 'data-w': 'kpis' },
-      tile('citas', 'green', T('k_citas'), nf(k.citas.v), '', k.citas.d, h('div', { class: 'kpi__viz' }, sparkline(k.citas.spark))),
-      tile('ocup', 'orange', T('k_ocup'), nf(k.ocup.v), '%', k.ocup.d, h('div', { class: 'kpi__viz kpi__viz--ring' }, ring(k.ocup.v, { size: 58, stroke: 7, label: `${T('k_ocup')} ${Math.round(k.ocup.v)}%` })), { unit: ' pts', abs: false }),
-      tile('nuevos', 'blue', T('k_nuevos'), nf(k.nuevos.v), '', k.nuevos.d, h('div', { class: 'kpi__viz' }, sparkline(k.nuevos.spark)), { href: '#/clientes' }),
-      tile('cancel', 'rose', T('k_cancel'), nf(k.cancel.v, 1), '%', k.cancel.d, h('div', { class: 'kpi__viz kpi__viz--ring' }, ring(k.cancel.v, { size: 58, stroke: 7, label: `${T('k_cancel')} ${nf(k.cancel.v, 1)}%` })), { invert: true, unit: ' pts' }),
-      tile('auto', 'violet', T('k_auto'), nf(k.auto.v), '%', k.auto.d, h('div', { class: 'kpi__viz kpi__viz--ring' }, ring(k.auto.v, { size: 58, stroke: 7, label: `${T('k_auto')} ${Math.round(k.auto.v)}%` })), { href: '#/chats', unit: ' pts' }),
-      tile('horas', 'sand', T('k_horas'), nf(k.horas.v, 1), 'h', k.horas.d, h('div', { class: 'kpi__viz' }, sparkline(k.horas.spark))),
-      ui.hidden.has('goal') ? null : goalStrip());
-  }
-
-  // ── línea de tiempo de hoy ────────────────────────────────────────────────────────────────────
-  let nowEl = null; let nowTimer = null;
-  const bounds = () => {
-    const list = res.citas_hoy;
-    let a = 7 * 60; let b = 17 * 60;
-    for (const c of list) { const s = mins(c.inicio); const e = s + durMin(c); a = Math.min(a, Math.floor(s / 60) * 60); b = Math.max(b, Math.ceil(e / 60) * 60); }
-    return [a - 0, b + 0];
+    if (!data) {
+      root.append(header(), h('div', { class: 'd-kpis' }, [0, 1, 2, 3].map(() => skel('d-skel--kpi'))), h('div', { class: 'd-grid' }, skel('d-skel--chart'), skel('d-skel--chart')));
+      return;
+    }
+    root.append(header(), kpis(data),
+      h('div', { class: 'd-grid' }, revenueCard(S, data, paint), calendarCard(S, data, paint)),
+      h('div', { class: 'd-grid3' }, attentionCard(data), cashCard(data), funnelCard(data)),
+      inboxCard(data));
+    window.scrollTo(0, y);
   };
-  const mins = (isoStr) => { const d = new Date(new Date(isoStr).getTime() - 5 * 3600000); return d.getUTCHours() * 60 + d.getUTCMinutes(); };
-  const nowMin = () => { const d = new Date(Date.now() - 5 * 3600000); return d.getUTCHours() * 60 + d.getUTCMinutes(); };
 
-  function timelineCard() {
-    const seg = h('div', { class: 'seg seg--sm', role: 'group', 'aria-label': T('tlView') },
-      h('button', { type: 'button', 'aria-pressed': String(ui.tl === 'line'), onclick: () => { ui.tl = 'line'; refresh(); }, 'aria-label': T('tl'), title: T('tl') }, icon('gantt', 16)),
-      h('button', { type: 'button', 'aria-pressed': String(ui.tl === 'list'), onclick: () => { ui.tl = 'list'; refresh(); }, 'aria-label': T('tlList'), title: T('tlList') }, icon('list', 16)));
-    const todays = res.citas_hoy;
-    let body;
-    if (!todays.length) {
-      body = h('div', { class: 'dempty' }, icon('calendar', 28), h('b', null, t('hoy.emptyTitle')), h('span', null, res.proxima ? t('hoy.emptyNext', { when: fmtWhen(res.proxima.inicio) }) : t('hoy.emptyText')));
-    } else if (ui.tl === 'list') {
-      body = h('div', { class: 'list' }, todays.map((c) => h('button', { class: `pcard${c.estado === 'cancelada' ? ' pcard--cancel' : ''}`, type: 'button', style: `--p:${parcelColor(c.servicio_id)}`, onclick: () => openCitaSheet(c, async () => { await load(); paint(); }) },
-        h('span', { class: 'pcard__bar' }), h('div', { class: 'pcard__time' }, fmtIsoTime(c.inicio), h('small', null, `${durMin(c)} min`)),
-        h('div', { class: 'item__main' }, h('div', { class: 'item__title' }, svcLabel(c, getLang())), h('div', { class: 'item__sub' }, `${c.cliente_nombre || `+${c.cliente_telefono}`} · ${c.recurso_nombre}`)), statusBadge(c.estado))));
-    } else {
-      const [a, b] = bounds(); const span = b - a;
-      const lanes = data.recursos.filter((r) => r.activo || todays.some((c) => c.recurso_id === r.id)).filter((r) => todays.some((c) => c.recurso_id === r.id) || data.recursos.length <= 5).slice(0, 8);
-      const ticks = []; for (let m = a; m <= b; m += 60) ticks.push(m);
-      nowEl = h('div', { class: 'tl__now', 'aria-hidden': 'true' }, h('span', null));
-      const track = h('div', { class: 'tl__plot' },
-        h('div', { class: 'tl__axis', 'aria-hidden': 'true' }, ticks.map((m) => h('span', { style: `left:${((m - a) / span) * 100}%` }, fmtTime(`${String(Math.floor(m / 60) % 24).padStart(2, '0')}:00`).replace(':00', '')))),
-        lanes.map((r) => h('div', { class: 'tl__lane' },
-          h('span', { class: 'tl__name' }, r.nombre),
-          h('div', { class: 'tl__track' }, ticks.map((m) => h('i', { class: 'tl__grid', style: `left:${((m - a) / span) * 100}%` })),
-            todays.filter((c) => c.recurso_id === r.id).map((c) => {
-              const s = mins(c.inicio); const l = ((s - a) / span) * 100; const wd = (durMin(c) / span) * 100;
-              return h('button', { class: `tl__blk${c.estado === 'cancelada' ? ' is-off' : ''}`, type: 'button', style: `left:${l}%;width:${Math.max(wd, 3)}%;--p:${parcelColor(c.servicio_id)}`, 'aria-label': `${fmtIsoTime(c.inicio)} · ${svcLabel(c, getLang())} · ${c.cliente_nombre || c.cliente_telefono}`, onclick: () => openCitaSheet(c, async () => { await load(); paint(); }) },
-                h('b', null, svcLabel(c, getLang())), h('small', null, fmtIsoTime(c.inicio)));
-            })))),
-        nowEl);
-      nowEl._b = [a, b];
-      body = h('div', { class: 'dtl' }, h('div', { class: 'tl__scroll' }, track));
-    }
-    return card('timeline', T('w_timeline'), { sub: T('tlSub', { n: todays.filter((c) => c.estado !== 'cancelada').length }), actions: [seg, h('button', { class: 'btn btn--secondary btn--sm', type: 'button', onclick: () => go('#/calendario') }, icon('calendar', 16), t('nav.calendar'))], body });
-  }
-  function startNowTicker() {
-    const place = () => {
-      if (!nowEl || !nowEl.isConnected) return;
-      const [a, b] = nowEl._b; const m = nowMin();
-      const inside = m >= a && m <= b;
-      nowEl.style.display = inside ? '' : 'none';
-      nowEl.style.left = `calc(var(--lab) + (100% - var(--lab)) * ${((m - a) / (b - a)).toFixed(4)})`;
-      nowEl.firstChild.textContent = fmtTime(`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`).replace(/ [ap]\. m\./, '').replace(/ [AP]M/, '');
-    };
-    place();
-    clearInterval(nowTimer);
-    nowTimer = setInterval(place, 30000);
+  async function load() {
+    const hoyYmd = todayLocal();
+    const [dash, crm, fin, dia] = await Promise.all([
+      get('/api/staff/dashboard').catch(() => null), get('/api/staff/crm').catch(() => null),
+      get('/api/staff/finanzas').catch(() => null), get(`/api/staff/dia/${hoyYmd}`).catch(() => null),
+    ]);
+    if (!isCurrent()) return;
+    if (!dash && !crm && !fin && !data) { clear(root); root.append(h('div', { class: 'empty' }, h('h3', null, t('err.generic')), h('button', { class: 'btn btn--primary', type: 'button', onclick: load }, t('common.retry')))); return; }
+    const next = { hoy: fin?.hoy || dash?.hoy || hoyYmd, dash: dash || data?.dash, crm: crm || data?.crm, fin: fin || data?.fin, dia: dia || data?.dia };
+    if (!next.dash) return;
+    const sig = JSON.stringify(next);
+    if (sig === last) return;
+    last = sig; data = next;
+    try { localStorage.setItem(KEY, JSON.stringify(slim(next))); } catch { /* sin espacio */ }
+    paint();
   }
 
-  // ── hallazgos + atención ──────────────────────────────────────────────────────────────────────
-  function insightsCard() {
-    const att = res.atencion.slice(0, 2);
-    const items = M.insights.slice(0, 5).map((i) => h('li', { class: `ins ins--${i.tone}` }, h('span', { class: 'ins__ico' }, icon(i.ico, 18)), h('p', null, say(i.k, i.p))));
-    const body = h('div', { class: 'insights' },
-      att.length ? h('div', { class: 'need' }, h('h3', null, T('act')), att.map((a) => h('a', { class: 'need__row', href: `#/chats/${a.id}` }, avatar(a.nombre || a.telefono), h('div', null, h('b', null, a.nombre || `+${a.telefono}`), h('span', null, a.ultimo)), icon('right', 16)))) : null,
-      items.length ? h('ul', { class: 'inslist' }, items) : h('p', { class: 'muted' }, T('insNone')));
-    return card('insights', T('w_insights'), { sub: T('insSub'), body });
-  }
-
-  // ── tendencia ─────────────────────────────────────────────────────────────────────────────────
-  function trendCard() {
-    const metrics = { citas: [M.series, M.seriesPrev], ocup: [M.kpi.ocup.spark, null], horas: [M.kpi.horas.spark, null], nuevos: [M.kpi.nuevos.spark, null] };
-    const [vals, prevVals] = metrics[ui.metric];
-    const total = vals.reduce((a, b) => a + b, 0);
-    const best = vals.indexOf(Math.max(...vals));
-    const unit = ui.metric === 'ocup' ? '%' : ui.metric === 'horas' ? ' h' : '';
-    const seg = h('div', { class: 'seg seg--sm', role: 'group', 'aria-label': T('trendMetric') }, ['citas', 'ocup', 'horas', 'nuevos'].map((m) => h('button', { type: 'button', 'aria-pressed': String(ui.metric === m), onclick: () => { ui.metric = m; refresh(); } }, T(`m_${m}`))));
-    const stat = (l, v) => h('div', { class: 'tstat' }, h('small', null, l), h('b', null, v));
-    const chart = areaChart({
-      values: vals.map((v) => Math.round(v * 10) / 10), compare: prevVals, labels: M.days, ariaLabel: T('trendAria', { metric: T(`m_${ui.metric}`), n: ui.dias }),
-      fmtLabel: (ymd, i, short) => (short ? dayShort(ymd) : dayLong(ymd)), fmtTip: (v, p) => `${nf(v, ui.metric === 'horas' ? 1 : 0)}${unit}${p != null ? ` · ${T('tipVs', { n: nf(p) })}` : ''}`, cls: ui.animate ? 'is-intro' : '', hgt: root.clientWidth >= 1040 ? 330 : 220,
-    });
-    const avg = vals.length ? total / vals.length : 0;
-    const body = h('div', { class: 'trend' },
-      h('div', { class: 'tstats' }, ui.metric === 'ocup' ? stat(T('tAvg'), `${nf(avg)}%`) : stat(T('tTotal'), `${nf(total, ui.metric === 'horas' ? 1 : 0)}${unit}`), ui.metric === 'ocup' ? null : stat(T('tAvg'), `${nf(avg, 1)}${unit}`), stat(T('tBest'), vals[best] ? `${dayShort(M.days[best])} · ${nf(vals[best], ui.metric === 'horas' ? 1 : 0)}${unit}` : '—'),
-        prevVals ? h('div', { class: 'tkey' }, h('i', null), T('tPrev')) : null),
-      chart);
-    return card('trend', T('w_trend'), { sub: T('trendSub', { n: ui.dias }), actions: seg, body });
-  }
-
-  // ── meta del mes (franja dentro de los indicadores) ───────────────────────────────────────────
-  function goalStrip() {
-    const g = M.goal; const p = Math.min(100, (g.n / ui.goal) * 100);
-    const set = (n) => { ui.goal = Math.max(5, Math.min(2000, n)); pref('dash_goal', String(ui.goal)); refresh(); };
-    return h('article', { class: 'goal', 'data-k': 'goal', 'aria-label': T('w_goal') },
-      h('div', { class: 'goal__l' }, h('h3', null, icon('target', 16), T('w_goal')), h('p', null, g.n >= ui.goal ? T('goalDone') : T('goalOf', { n: g.n, goal: ui.goal }))),
-      h('div', { class: 'goal__m' },
-        h('div', { class: 'goal__bar', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(ui.goal), 'aria-valuenow': String(g.n), 'aria-label': T('w_goal') }, h('i', { style: `--w:${(p / 100).toFixed(3)}` })),
-        h('small', null, T('goalProj', { n: g.proy }))),
-      h('b', { class: 'goal__pct' }, `${nf(p)}%`),
-      h('div', { class: 'stepper', role: 'group', 'aria-label': T('goalEdit') },
-        h('button', { class: 'btn btn--secondary btn--icon btn--sm', type: 'button', 'aria-label': T('goalMinus'), onclick: () => set(ui.goal - 5) }, '−'),
-        h('span', null, T('goalTarget', { n: ui.goal })),
-        h('button', { class: 'btn btn--secondary btn--icon btn--sm', type: 'button', 'aria-label': T('goalPlus'), onclick: () => set(ui.goal + 5) }, '+')));
-  }
-
-  // ── pregunta rápida ───────────────────────────────────────────────────────────────────────────
-  function askCard() {
-    const out = h('div', { class: 'ask__out', 'aria-live': 'polite' }, h('p', { class: 'muted' }, T('askHint')));
-    const Q = [['peak', 'qPeak'], ['topSvc', 'qTopSvc'], ['freeRes', 'qFreeRes'], ['week', 'qWeek'], ['topClient', 'qTopClient'], ['freeDay', 'qFreeDay']];
-    const chips = h('div', { class: 'chips' }, Q.map(([k, lbl]) => h('button', { class: 'chip', type: 'button', onclick: () => { const a = answer(k, M, data); out.replaceChildren(h('div', { class: 'bub bub--q' }, T(lbl)), h('div', { class: 'bub bub--a' }, icon('sparkles', 16), say(a.k, a.p))); } }, T(lbl))));
-    return card('ask', T('w_ask'), { sub: T('askSub'), body: h('div', { class: 'ask' }, chips, out) });
-  }
-
-  // ── servicios / recursos / origen / estados ───────────────────────────────────────────────────
-  function servicesCard() {
-    const items = M.servicios.filter((s) => s.n || ui.svc.has(s.i)).slice(0, 8).map((s) => ({ label: svcName(data.servicios[s.i]), value: s.n, color: parcelColor(data.servicios[s.i].id), sub: T('svcSub', { n: s.n, h: nf(s.min / 60, 1) }), active: ui.svc.has(s.i), onclick: () => { if (ui.svc.has(s.i)) ui.svc.delete(s.i); else ui.svc.add(s.i); refresh(); } }));
-    return card('services', T('w_services'), { sub: T('svcHint'), body: items.length ? hbars(items) : h('p', { class: 'muted' }, T('noData')) });
-  }
-  function resourcesCard() {
-    const items = M.recursos.map((r) => ({ label: r.nombre, value: Math.round(r.pct), color: r.pct >= 85 ? 'var(--warn)' : r.pct < 35 ? 'var(--accent)' : 'var(--green)', sub: r.cap ? T('resSub', { a: nf(r.res / 60, 1), b: nf(r.cap / 60) }) : T('resNoCap'), active: ui.rec.has(r.i), onclick: () => { if (ui.rec.has(r.i)) ui.rec.delete(r.i); else ui.rec.add(r.i); refresh(); } }));
-    return card('resources', T('w_resources'), { sub: T('resHint'), body: items.length ? hbars(items, { max: 100, fmt: (v) => `${v}%` }) : h('p', { class: 'muted' }, T('noData')) });
-  }
-  function legend(items, total) {
-    return h('ul', { class: 'dlegend' }, items.map((it) => h('li', null, h('i', { style: `background:${it.color}` }), h('span', null, it.label), h('b', null, nf(it.value)), h('small', null, `${total ? Math.round((it.value / total) * 100) : 0}%`))));
-  }
-  function originCard() {
-    const items = [{ label: T('oWa'), value: M.origen[0], color: 'var(--p1)' }, { label: T('oPwa'), value: M.origen[1], color: 'var(--p2)' }, { label: T('oMan'), value: M.origen[2], color: 'var(--p3)' }];
-    const total = M.origen.reduce((a, b) => a + b, 0);
-    return card('origin', T('w_origin'), { sub: T('originSub'), body: h('div', { class: 'dnwrap' }, h('div', { class: 'ddn' }, donut(items.map((i, k) => ({ ...i, cls: `s${k}` })), { big: nf(total), small: T('oTotal'), label: T('w_origin') }), legend(items, total)), h('p', { class: 'dnote' }, icon('bot', 16), T('originNote', { pct: Math.round(M.kpi.auto.v) }))) });
-  }
-  function statusCard() {
-    const items = [{ label: T('sDone'), value: M.estados[1], color: 'var(--green)' }, { label: T('sConf'), value: M.estados[0], color: 'var(--accent)' }, { label: T('sCan'), value: M.estados[2], color: 'var(--warn)' }];
-    const total = items.reduce((a, b) => a + b.value, 0);
-    return card('status', T('w_status'), { sub: T('statusSub'), body: h('div', { class: 'dnwrap' }, h('div', { class: 'ddn' }, donut(items.map((i, k) => ({ ...i, cls: `t${k}` })), { big: nf(total), small: T('oTotal'), label: T('w_status') }), legend(items, total)), h('p', { class: 'dnote' }, icon('shield', 16), T('statusNote', { pct: M.estados[1] + M.estados[2] ? Math.round((M.estados[1] / (M.estados[1] + M.estados[2])) * 100) : 0 }))) });
-  }
-
-  // ── calor, capacidad, embudo, clientes ────────────────────────────────────────────────────────
-  function heatCard() {
-    const body = M.peak.n
-      ? heatmap({ matrix: M.matrix, rowLabels: M.matrix.map((_, i) => cap1(dowName(i, 'short'))), colLabels: HOURS.map((x) => String(x > 12 ? x - 12 : x)), ariaLabel: T('heatAria', { dow: dowName(M.peak.r), hour: hourLabel(HOURS[M.peak.c]), n: M.peak.n }), fmtTip: (r, c, n) => T('heatTip', { dow: cap1(dowName(r)), hour: hourLabel(HOURS[c]), n }) })
-      : h('p', { class: 'muted' }, T('noData'));
-    return card('heat', T('w_heat'), { sub: T('heatSub'), body });
-  }
-  function capacityCard() {
-    const days = M.futuro;
-    const body = h('div', { class: 'cap', role: 'list' }, days.map((d, i) => h('a', { class: `cap__d${i === 0 ? ' is-today' : ''}${d.pct >= 90 ? ' is-full' : ''}`, role: 'listitem', href: '#/calendario', 'aria-label': T('capTip', { ymd: dayLong(d.ymd), n: d.n, pct: Math.round(d.pct) }), title: T('capTip', { ymd: dayLong(d.ymd), n: d.n, pct: Math.round(d.pct) }) },
-      h('b', null, String(d.n)), h('span', { class: 'cap__bar' }, h('i', { style: `--h:${Math.max(0.04, d.pct / 100).toFixed(2)};--i:${i}` })), h('small', null, cap1(dowName((new Date(`${d.ymd}T12:00:00Z`).getUTCDay() + 6) % 7, 'narrow'))), h('small', { class: 'cap__n' }, d.ymd.slice(8)))));
-    return card('capacity', T('w_capacity'), { sub: T('capSub'), body });
-  }
-  function funnelCard() {
-    const F = M.funnel; const base = Math.max(1, F.clientes);
-    const steps = [[T('fClients'), F.clientes], [T('fChat'), F.chat], [T('fCita'), F.cita], [T('fRepeat'), F.recurrentes]];
-    return card('funnel', T('w_funnel'), { sub: T('funnelSub'), body: h('ol', { class: 'funnel' }, steps.map(([l, v], i) => h('li', { style: `--w:${Math.max(0.08, v / base).toFixed(2)};--i:${i}` }, h('div', { class: 'funnel__bar' }, h('i'), h('b', null, nf(v))), h('span', null, l), h('small', null, `${Math.round((v / base) * 100)}%`)))) });
-  }
-  function clientsCard() {
-    const top = M.topClientes; const max = Math.max(1, ...top.map((c) => c.n));
-    return card('clients', T('w_clients'), { sub: T('cSub'), actions: h('a', { class: 'btn btn--ghost btn--sm', href: '#/clientes' }, t('nav.clients')),
-      body: top.length ? h('ul', { class: 'toplist' }, top.map((c, i) => h('li', { style: `--w:${(c.n / max).toFixed(2)};--i:${i}` }, h('span', { class: 'rank' }, String(i + 1)), avatar(c.nombre), h('div', null, h('b', null, c.nombre), h('div', { class: 'toplist__bar' }, h('i'))), h('em', null, T('cN', { n: c.n }))))) : h('p', { class: 'muted' }, T('noData')) });
-  }
-
-  // ── próximas, actividad, acciones ─────────────────────────────────────────────────────────────
-  function upcomingCard() {
-    const full = new Map(res.citas_hoy.map((c) => [c.id, c]));
-    const rows = M.proximas.map((r) => {
-      const svc = data.servicios[r.svc]; const cli = r.cli >= 0 ? data.clientes[r.cli] : null;
-      const when = r.ymd === data.hoy ? T('relToday') : r.ymd === addDays(data.hoy, 1) ? T('tomorrow_') : cap1(dayShort(r.ymd));
-      const fx = full.get(r.id);
-      return h('button', { class: 'urow', type: 'button', style: `--p:${parcelColor(svc.id)}`, onclick: () => (fx ? openCitaSheet(fx, async () => { await load(); paint(); }) : go('#/calendario')) },
-        h('span', { class: 'urow__bar' }), h('div', { class: 'urow__t' }, h('b', null, fmtTime(`${String(Math.floor(r.s / 60)).padStart(2, '0')}:${String(r.s % 60).padStart(2, '0')}`)), h('small', null, when)),
-        h('div', { class: 'item__main' }, h('div', { class: 'item__title' }, svcName(svc)), h('div', { class: 'item__sub' }, `${cli ? cli[0] || `+${cli[1]}` : '—'} · ${data.recursos[r.rec].nombre}`)),
-        h('span', { class: 'badge' }, `${r.d} min`));
-    });
-    return card('upcoming', T('w_upcoming'), { sub: T('upSub'), body: rows.length ? h('div', { class: 'list' }, rows) : h('p', { class: 'muted' }, T('upNone')) });
-  }
-  function activityCard() {
-    const ico = ['chat', 'phone', 'edit'];
-    const rows = M.recientes.map((r) => {
-      const svc = data.servicios[r.svc]; const cli = r.cli >= 0 ? data.clientes[r.cli] : null;
-      return h('li', { class: 'act' }, h('span', { class: 'act__ico', style: `--c:var(--p${r.org + 1})` }, icon(ico[r.org], 16)),
-        h('div', null, h('b', null, cli ? cli[0] || `+${cli[1]}` : '—'), h('span', null, ` · ${svcName(svc)}`), h('small', null, `${T(['oWa', 'oPwa', 'oMan'][r.org])} · ${T('actWhen', { rel: rel(r.cre, data.hoy) })} · ${cap1(dayShort(r.ymd))}`)));
-    });
-    return card('activity', T('w_activity'), { sub: T('actSub'), body: rows.length ? h('ul', { class: 'actlist' }, rows) : h('p', { class: 'muted' }, T('noData')) });
-  }
-  function actionsCard() {
-    const a = (ico, label, fn, href) => (href ? h('a', { class: 'qa', href }, h('span', null, icon(ico, 20)), label) : h('button', { class: 'qa', type: 'button', onclick: fn }, h('span', null, icon(ico, 20)), label));
-    return card('actions', T('w_actions'), { sub: T('aSub'), body: h('div', { class: 'qas' },
-      a('plus', t('cita.new'), () => openNewCitaSheet({ onDone: async () => { await load(); paint(); } })),
-      a('chat', T('aChats'), null, '#/chats'), a('calendar', T('aCal'), null, '#/calendario'), a('users', t('nav.clients'), null, '#/clientes'),
-      a('phone', T('aSim'), null, '#/simulador'), a('download', T('export'), exportCsv), a('sliders', T('customize'), openCustomize),
-      a(document.documentElement.dataset.theme === 'dark' ? 'sun' : 'moon', T('aTheme'), () => toggleTheme()), a('settings', t('nav.settings'), null, '#/config')) });
-  }
-
-  function emptyCard() {
-    const btn = h('button', { class: 'btn btn--primary', type: 'button' }, icon('leaf', 16), T('emDemo'));
-    btn.addEventListener('click', () => busy(btn, async () => { try { await post('/api/staff/demo-data', {}); toast(T('emDone')); cache = null; rerender(); } catch (e) { toast(e.message, true); } }));
-    return h('section', { class: 'dc dc--empty' }, h('div', null, icon('sparkles', 26), h('h2', null, T('emTitle')), h('p', null, T('emText'))), h('div', { class: 'row' }, btn, h('button', { class: 'btn btn--secondary', type: 'button', onclick: () => openNewCitaSheet({ onDone: async () => { await load(); paint(); } }) }, icon('plus', 16), t('cita.new'))));
-  }
-
-  // ── personalizar, exportar, paleta de comandos ───────────────────────────────────────────────
-  function openCustomize() {
-    const boxes = WIDGETS.map((id) => { const cb = h('input', { type: 'checkbox', id: `cw-${id}`, checked: !ui.hidden.has(id) }); cb.checked = !ui.hidden.has(id); return [id, cb]; });
-    const body = h('div', { class: 'custom' }, h('p', { class: 'muted' }, T('customText')), h('div', { class: 'custom__grid' }, boxes.map(([id, cb]) => h('label', { class: 'check', for: `cw-${id}` }, cb, h('span', null, T(`w_${id}`))))));
-    const reset = h('button', { class: 'btn btn--secondary', type: 'button' }, T('reset'));
-    const ok = h('button', { class: 'btn btn--primary', type: 'button' }, t('common.save'));
-    const s = openSheet({ title: T('customize'), body, foot: [reset, ok] });
-    reset.addEventListener('click', () => boxes.forEach(([, cb]) => { cb.checked = true; }));
-    ok.addEventListener('click', () => { ui.hidden = new Set(boxes.filter(([, cb]) => !cb.checked).map(([id]) => id)); pref('dash_hidden', JSON.stringify([...ui.hidden])); s.close(); refresh(); });
-  }
-
-  function exportCsv() {
-    const safe = (v) => { let s = String(v ?? ''); if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`; return `"${s.replaceAll('"', '""')}"`; };
-    const head = ['fecha', 'hora', 'servicio', 'recurso', 'cliente', 'telefono', 'estado', 'origen'];
-    const lines = [head.join(',')];
-    for (const r of [...M.rows].sort((a, b) => startMs(a) - startMs(b))) {
-      const cli = r.cli >= 0 ? data.clientes[r.cli] : ['', ''];
-      lines.push([r.ymd, `${String(Math.floor(r.s / 60)).padStart(2, '0')}:${String(r.s % 60).padStart(2, '0')}`, svcName(data.servicios[r.svc]), data.recursos[r.rec].nombre, cli[0], cli[1], data.estados[r.est], data.origenes[r.org]].map(safe).join(','));
-    }
-    const url = URL.createObjectURL(new Blob([`﻿${lines.join('\r\n')}`], { type: 'text/csv;charset=utf-8' }));
-    const a = h('a', { href: url, download: `fieldflow-citas-${data.hoy}.csv` });
-    document.body.append(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 4000);
-    toast(T('exported'));
-  }
-
-  function openPalette() {
-    const opener = document.activeElement;
-    const input = h('input', { class: 'pal__in', type: 'search', placeholder: T('searchPh'), 'aria-label': T('search'), autocomplete: 'off', role: 'combobox', 'aria-expanded': 'true', 'aria-controls': 'pal-list' });
-    const list = h('ul', { class: 'pal__list', id: 'pal-list', role: 'listbox' });
-    const box = h('div', { class: 'pal', role: 'dialog', 'aria-modal': 'true', 'aria-label': T('search') }, h('div', { class: 'pal__head' }, icon('search', 18), input, h('kbd', null, 'Esc')), list);
-    const ov = h('div', { class: 'pal__ov' }, box);
-    let items = []; let sel = 0;
-    const base = [
-      [T('pNav'), 'home', t('nav.today'), () => go('#/hoy')], [T('pNav'), 'calendar', t('nav.calendar'), () => go('#/calendario')], [T('pNav'), 'chat', t('nav.chats'), () => go('#/chats')],
-      [T('pNav'), 'users', t('nav.clients'), () => go('#/clientes')], [T('pNav'), 'phone', t('nav.simulator'), () => go('#/simulador')], [T('pNav'), 'settings', t('nav.settings'), () => go('#/config')],
-      [T('pActions'), 'plus', t('cita.new'), () => openNewCitaSheet({ onDone: async () => { await load(); paint(); } })], [T('pActions'), 'download', T('export'), exportCsv], [T('pActions'), 'sliders', T('customize'), openCustomize],
-      [T('pActions'), 'moon', T('aTheme'), () => toggleTheme()], ...RANGES.map((n) => [T('pActions'), 'clock', T('pRange', { n }), () => { ui.dias = n; pref('dash_dias', String(n)); refresh(); }]),
-    ];
-    const close = () => { ov.remove(); document.removeEventListener('keydown', onK, true); opener?.focus?.(); };
-    const run = (i) => { const it = items[i]; if (!it) return; close(); it[3](); };
-    const draw = () => {
-      const q = input.value.trim().toLowerCase();
-      items = base.filter((b) => !q || b[2].toLowerCase().includes(q));
-      if (q.length >= 2) {
-        const hits = data.clientes.map((c, i) => [c, i]).filter(([c]) => (c[0] || '').toLowerCase().includes(q) || c[1].includes(q)).slice(0, 6);
-        items = items.concat(hits.map(([c]) => [T('pClients'), 'user', `${c[0] || `+${c[1]}`} · +${c[1]}`, () => go('#/clientes')]));
-      }
-      sel = Math.min(sel, Math.max(0, items.length - 1));
-      clear(list);
-      if (!items.length) { list.append(h('li', { class: 'pal__none' }, T('pNone'))); return; }
-      let last = '';
-      items.forEach((it, i) => {
-        if (it[0] !== last) { list.append(h('li', { class: 'pal__grp', role: 'presentation' }, it[0])); last = it[0]; }
-        list.append(h('li', { role: 'option', id: `pal-${i}`, 'aria-selected': String(i === sel), class: i === sel ? 'is-sel' : '', onpointerdown: (e) => { e.preventDefault(); run(i); }, onpointerenter: () => { sel = i; mark(); } }, icon(it[1], 18), h('span', null, it[2])));
-      });
-      input.setAttribute('aria-activedescendant', `pal-${sel}`);
-    };
-    const mark = () => { list.querySelectorAll('[role=option]').forEach((n) => { const on = n.id === `pal-${sel}`; n.classList.toggle('is-sel', on); n.setAttribute('aria-selected', String(on)); if (on) n.scrollIntoView({ block: 'nearest' }); }); input.setAttribute('aria-activedescendant', `pal-${sel}`); };
-    const onK = (e) => {
-      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
-      else if (e.key === 'ArrowDown') { e.preventDefault(); sel = (sel + 1) % Math.max(1, items.length); mark(); }
-      else if (e.key === 'ArrowUp') { e.preventDefault(); sel = (sel - 1 + items.length) % Math.max(1, items.length); mark(); }
-      else if (e.key === 'Enter') { e.preventDefault(); run(sel); }
-      else if (e.key === 'Tab') { e.preventDefault(); }
-    };
-    input.addEventListener('input', () => { sel = 0; draw(); });
-    ov.addEventListener('pointerdown', (e) => { if (e.target === ov) close(); });
-    document.addEventListener('keydown', onK, true);
-    document.body.append(ov); draw(); input.focus();
-  }
-
-  function skeleton() {
-    return h('div', { class: 'dash__skel', role: 'status', 'aria-label': t('common.loading') },
-      h('div', { class: 'sk sk--head' }), h('div', { class: 'sk-grid' }, Array.from({ length: 7 }, (_, i) => h('div', { class: `sk sk--c${i}` }))));
-  }
-
-  // ── arranque (al final: todas las funciones y constantes ya existen) ──────────────────────────
-  if (data) { setPalette(data.servicios.map((s) => ({ id: s.id }))); paint(); } else root.append(skeleton());
-  try { await load(); } catch (e) { if (!isCurrent()) return null; if (!data) throw e; toast(e.message, true); }
-  if (!isCurrent()) return null;
+  if (data) { if (data.hoy !== todayLocal()) data.dia = null; data.hoy = todayLocal(); last = ''; }
   paint();
-  ui.animate = false;
-
-  // Actualización silenciosa cada minuto (solo si la pestaña está visible).
-  timers.push(setInterval(async () => {
-    if (document.visibilityState !== 'visible' || !isCurrent()) return;
-    try { await load(); paint(); } catch { /* sigue con lo que hay */ }
-  }, 60000));
-  const onKey = (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); openPalette(); } };
-  document.addEventListener('keydown', onKey);
-  return () => { timers.forEach(clearInterval); clearInterval(nowTimer); document.removeEventListener('keydown', onKey); stopCharts(); };
+  load();
+  const timer = setInterval(() => { if (document.visibilityState === 'visible') load(); }, 60000);
+  return () => { clearInterval(timer); S.ro?.disconnect(); };
 }

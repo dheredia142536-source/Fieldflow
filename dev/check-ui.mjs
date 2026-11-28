@@ -10,18 +10,14 @@ const bad = (m) => { fail++; console.log('  ✗', m); };
 const files = [];
 (function walk(d) { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else if (p.endsWith('.js') && !p.endsWith('dict.js')) files.push(p); } })(new URL('../public/js/', import.meta.url).pathname);
 const used = new Set();
-for (const f of files) for (const m of readFileSync(f, 'utf8').matchAll(/['"`]((?:common|err|nav|welcome|forgot|login|chat|install|citas|status|hoy|cal|cita|origin|chats|clients|mas|cfg|sim|reg)\.[A-Za-z0-9_]+)['"`]/g)) used.add(m[1]);
-// Claves del dashboard: T('clave') → dash.clave (y las dinámicas conocidas)
-for (const f of files) {
-  const src = readFileSync(f, 'utf8');
-  if (!/const T = \(k, v\) => t\(`dash\./.test(src)) continue;
-  for (const m of src.matchAll(/\bT\(\s*'([A-Za-z0-9_]+)'/g)) used.add(`dash.${m[1]}`);
-}
-for (const n of [7, 30, 90]) used.add(`dash.r${n}`);
-for (const m of ['citas', 'ocup', 'horas', 'nuevos']) used.add(`dash.m_${m}`);
-for (const w of ['hero', 'kpis', 'timeline', 'insights', 'trend', 'goal', 'ask', 'services', 'resources', 'origin', 'heat', 'capacity', 'funnel', 'clients', 'status', 'upcoming', 'activity', 'actions']) used.add(`dash.w_${w}`);
-for (const k of ['attention', 'busyDay', 'up', 'down', 'hotRes', 'coldRes', 'peak', 'cancelHigh', 'cancelLow', 'auto', 'topSvc', 'newClients', 'freeWeek', 'tomorrow', 'a_peak', 'a_topSvc', 'a_freeRes', 'a_week', 'a_topClient', 'a_freeDay', 'a_none']) used.add(`dash.${k}`);
-for (const k of ['qPeak', 'qTopSvc', 'qFreeRes', 'qWeek', 'qTopClient', 'qFreeDay']) used.add(`dash.${k}`);
+for (const f of files) for (const m of readFileSync(f, 'utf8').matchAll(/['"`]((?:common|err|nav|welcome|forgot|login|chat|install|citas|status|hoy|cal|cita|origin|chats|clients|mas|cfg|sim|reg|pn|crm|day)\.[A-Za-z0-9_]+)['"`]/g)) used.add(m[1]);
+// Claves compuestas (se arman con una variable)
+for (const e of ['nuevo', 'contactado', 'cotizado', 'cerrado', 'perdido']) used.add(`crm.st_${e}`);
+for (const k of ['nota', 'llamada', 'visita', 'correo_recibido', 'correo_enviado', 'etapa']) used.add(`crm.h_${k}`);
+for (const k of ['efectivo', 'transferencia', 'otro']) used.add(`day.m_${k}`);
+for (const k of ['entrada', 'salida', 'merma', 'ajuste']) used.add(`day.s_${k}`);
+for (const k of ['caja', 'productos', 'cierre']) used.add(`day.tab_${k}`);
+for (const k of ['1w', '1m', '3m', '6m', '1y', 'all']) used.add(`pn.r_${k}`);
 for (const k of used) for (const l of ['es', 'en']) if (!(k in dict[l])) bad(`falta ${l}: ${k}`);
 for (const k of Object.keys(dict.es)) if (!(k in dict.en)) bad(`falta en: ${k}`);
 for (const k of Object.keys(dict.en)) if (!(k in dict.es)) bad(`falta es: ${k}`);

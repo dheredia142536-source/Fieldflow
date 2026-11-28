@@ -99,3 +99,8 @@ Node ≥ 22.13. `npm run dev` → http://localhost:8888 (`admin@fieldflow.test` 
 **Not verified / not built:** real Vercel/Neon/Meta/Groq runs; reminders, multi-tenant, payments, roles, login lockout. Fixed UTC-5 timezone.
 
 **Sign-up (new):** `/#/registro` collects company, name, email, phone, password, business type, location, purposes and terms; a 6-digit code is emailed via Brevo (`BREVO_API_KEY`, `MAIL_FROM`); `/#/recuperar` resets a password the same way; Google sign-in uses `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` and the account is created only after verification. Each business is isolated (own customers, bookings, chats, settings). `ADMIN_EMAIL` is the principal business and owns the platform WhatsApp number. The `multi_negocio` migration rebuilds tables (pre-launch data is wiped). `/terminos` and `/privacidad` are the legal pages (a draft for legal review; `/legal.html` redirects).
+
+## Panel, Contactos (CRM) y Día
+- **Panel** (`#/hoy`): cifras con cambio, ingresos por rango, calendario, atención pendiente, embudo, caja de hoy y bandeja.
+- **Contactos** (`#/crm`): embudo por etapas (arrastrar o flechas) y lista; ficha con historial, llamada, WhatsApp y envío de correo por Brevo (las respuestas llegan al correo del usuario). Quienes escriben al asistente se agregan solos.
+- **Día** (`#/dia/AAAA-MM-DD`): caja (apertura, ingresos, egresos) y productos libres (stock) con cierre diario; cada día abre con lo contado el día anterior. Migración `20261128000000_crm_caja_stock.sql`.

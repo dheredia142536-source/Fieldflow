@@ -12,7 +12,9 @@ const STAFF = {
   hoy: () => import('./views/hoy.js'),
   calendario: () => import('./views/calendario.js'),
   chats: () => import('./views/chats.js'),
-  clientes: () => import('./views/clientes.js'),
+  crm: () => import('./views/crm.js'),
+  dia: () => import('./views/dia.js'),
+  clientes: () => import('./views/crm.js'),
   mas: () => import('./views/mas.js'),
   config: () => import('./views/config.js'),
   simulador: () => import('./views/simulador.js'),
@@ -39,7 +41,7 @@ function startStaff() {
 
 // Precarga (sin bloquear) las pantallas del negocio mientras la persona está en el inicio o el login.
 function warmStaff() {
-  const run = () => ['./views/hoy.js', './views/calendario.js', './views/chats.js'].forEach((m) => import(m).catch(() => {}));
+  const run = () => ['./views/hoy.js', './views/calendario.js', './views/crm.js', './views/dia.js', './views/chats.js'].forEach((m) => import(m).catch(() => {}));
   (window.requestIdleCallback || ((f) => setTimeout(f, 800)))(run);
 }
 
@@ -70,6 +72,7 @@ const langSeg = () => langSwitch(getLang(), (c) => { setLang(c); if (state.clien
 async function logout() {
   await post('/api/auth/logout', { rol: state.staff ? 'staff' : 'client' }).catch(() => {});
   state.staff = null; state.client = null;
+  try { localStorage.removeItem('ff_hint'); } catch { /* ignora */ }
   go('#/');
 }
 
@@ -77,16 +80,17 @@ async function logout() {
 const NAV = [
   { id: 'hoy', icon: 'home', key: 'nav.today', tab: true },
   { id: 'calendario', icon: 'calendar', key: 'nav.calendar', tab: true },
-  { id: 'chats', icon: 'chat', key: 'nav.chats', tab: true },
-  { id: 'clientes', icon: 'users', key: 'nav.clients', tab: false },
+  { id: 'chats', icon: 'chat', key: 'nav.chats', tab: false },
+  { id: 'crm', icon: 'users', key: 'nav.crm', tab: true },
+  { id: 'dia', icon: 'doc', key: 'nav.day', tab: true },
   { id: 'simulador', icon: 'phone', key: 'nav.simulator', tab: false },
   { id: 'config', icon: 'settings', key: 'nav.settings', tab: false },
-  { id: 'mas', icon: 'more', key: 'nav.more', tab: true, railHidden: true },
+  { id: 'mas', icon: 'more', key: 'nav.more', tab: false, railHidden: true },
 ];
 
 function navLink(item, name, cls) {
   const badge = item.id === 'chats' && state.attention > 0 ? h('span', { class: 'count', 'aria-label': t('nav.pending', { n: state.attention }) }, String(state.attention)) : null;
-  const current = name === item.id || (item.id === 'mas' && ['config', 'simulador', 'clientes'].includes(name));
+  const current = name === item.id || (item.id === 'crm' && name === 'clientes') || (item.id === 'mas' && ['config', 'simulador'].includes(name));
   return h('a', { href: `#/${item.id}`, 'aria-current': current ? 'page' : null, class: cls, title: t(item.key) }, icon(item.icon, 22), h('span', { class: 'navlabel' }, t(item.key)), badge);
 }
 async function newCita() {
@@ -123,8 +127,10 @@ function buildShell(role, name) {
       h('button', { class: 'navlink', type: 'button', onclick: logout, title: t('nav.logout') }, icon('logout', 22), h('span', { class: 'navlabel' }, t('nav.logout')))));
   const top = h('header', { class: 'topbar' },
     h('a', { class: 'brand', href: '#/hoy', 'aria-label': biz }, logo(32)),
-    h('div', { class: 'topbar__title' }, t(NAV.find((n) => n.id === name)?.key || 'nav.today')),
-    h('span', { class: 'only-sm' }, langSeg()));
+    h('div', { class: 'topbar__title' }, t(name === 'clientes' ? 'nav.crm' : NAV.find((n) => n.id === name)?.key || 'nav.today')),
+    h('span', { class: 'only-sm topbar__act' },
+      h('a', { class: 'btn btn--ghost btn--icon btn--sm tb', href: '#/chats', 'aria-label': t('nav.chats'), 'aria-current': name === 'chats' ? 'page' : null }, icon('chat', 20), state.attention > 0 ? h('span', { class: 'count', 'aria-label': t('nav.pending', { n: state.attention }) }, String(state.attention)) : null),
+      h('a', { class: 'btn btn--ghost btn--icon btn--sm tb', href: '#/mas', 'aria-label': t('nav.more'), 'aria-current': ['mas', 'config', 'simulador'].includes(name) ? 'page' : null }, icon('menu', 20))));
   const tabs = NAV.filter((n) => n.tab).map((n) => navLink(n, name));
   const bar = h('nav', { class: 'tabbar tabbar--fab', 'aria-label': t('nav.main') }, tabs.slice(0, 2), fab(), tabs.slice(2));
   const main = h('main', { class: 'main', id: 'main', tabindex: '-1' });
@@ -169,7 +175,7 @@ async function route() {
     cleanup = typeof result === 'function' ? result : null;
   } catch (e) {
     if (my !== seq) return;
-    if (e.status === 401 && role) { state.staff = null; state.client = null; toast(t('err.session'), true); go('#/'); return; }
+    if (e.status === 401 && role) { state.staff = null; state.client = null; try { localStorage.removeItem('ff_hint'); } catch { /* ignora */ } toast(t('err.session'), true); go('#/'); return; }
     clear(main);
     main.append(h('div', { class: 'empty' }, h('h3', null, t('err.generic')), h('p', null, e.message), h('button', { class: 'btn btn--primary', type: 'button', onclick: route }, t('common.retry'))));
   }
@@ -209,13 +215,30 @@ async function boot() {
     try { await post('/api/auth/enter', { token: tok }); } catch (e) { linkError = e.message; }
     history.replaceState(null, '', `${url.pathname}${linkError ? '#/' : '#/chat'}`);
   }
-  try {
-    const [pub, me] = await Promise.all([get('/api/public'), get('/api/auth/me')]);
-    state.pub = pub; state.staff = me.staff; state.client = me.client;
-  } catch { /* sin conexión: se muestra la portada */ }
+  // Arranque instantáneo: si hubo una sesión del negocio, se pinta la estructura al momento con lo último
+  // que se conoce y se confirma con el servidor en segundo plano (sin pantalla de carga ni parpadeos).
+  let hint = null;
+  try { hint = JSON.parse(localStorage.getItem('ff_hint') || 'null'); } catch { /* sin caché */ }
+  const verify = async () => {
+    try {
+      const [pub, me] = await Promise.all([get('/api/public'), get('/api/auth/me')]);
+      state.pub = pub; state.staff = me.staff; state.client = me.client;
+      try { localStorage.setItem('ff_hint', JSON.stringify(me.staff ? { staff: me.staff, pub } : null)); } catch { /* ignora */ }
+    } catch { /* sin conexión: se mantiene lo último conocido */ }
+  };
   if (linkError) state.linkError = linkError;
-  if (!state.staff && !state.client) warmStaff();
   window.addEventListener('hashchange', route);
+  if (hint?.staff && !tok) {
+    state.staff = hint.staff; state.pub = hint.pub || state.pub;
+    route();
+    const before = !!state.staff;
+    await verify();
+    if (!state.staff && before) { toast(t('err.session'), true); go('#/'); }
+    else if (!state.client && !state.staff) warmStaff();
+    return;
+  }
+  await verify();
+  if (!state.staff && !state.client) warmStaff();
   route();
 }
 

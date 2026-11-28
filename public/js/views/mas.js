@@ -11,7 +11,7 @@ export default function mas({ main, go, rerender, toggleTheme }) {
   main.append(h('div', { class: 'stack--lg stack' },
     h('div', { class: 'pagehead' }, h('div', null, h('h1', null, t('nav.more')), h('p', null, state.staff?.correo || ''))),
     h('div', { class: 'list' },
-      link('#/clientes', 'users', t('nav.clients'), t('mas.clientsSub')),
+      link('#/chats', 'chat', t('nav.chats'), t('mas.chatsSub')),
       link('#/config', 'settings', t('nav.settings'), t('mas.settingsSub')),
       link('#/simulador', 'phone', t('nav.simulator'), t('mas.simSub'))),
     h('section', { class: 'card card--surface stack' }, h('h2', { class: 'sectiontitle' }, t('mas.prefs')),
@@ -19,5 +19,5 @@ export default function mas({ main, go, rerender, toggleTheme }) {
       h('div', { class: 'statusrow' }, h('span', null, t('common.theme')), h('button', { class: 'btn btn--secondary btn--sm', type: 'button', onclick: toggleTheme }, icon('moon', 16), t('common.toggleTheme'))),
       canPrompt() ? h('div', { class: 'statusrow' }, h('span', null, t('install.prompt')), h('button', { class: 'btn btn--primary btn--sm', type: 'button', onclick: promptInstall }, t('install.cta'))) : null,
       isIOS() && !isStandalone() ? h('p', { class: 'hint' }, t('install.ios')) : null),
-    h('button', { class: 'btn btn--danger btn--block', type: 'button', onclick: async () => { await post('/api/auth/logout', { rol: 'staff' }).catch(() => {}); state.staff = null; go('#/'); } }, icon('logout', 18), t('nav.logout'))));
+    h('button', { class: 'btn btn--danger btn--block', type: 'button', onclick: async () => { await post('/api/auth/logout', { rol: 'staff' }).catch(() => {}); state.staff = null; try { localStorage.removeItem('ff_hint'); } catch { /* ignora */ } go('#/'); } }, icon('logout', 18), t('nav.logout'))));
 }
