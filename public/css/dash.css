@@ -1,5 +1,5 @@
 /* FieldFlow · Panel, Contactos y Día. Superficies blancas sobre fondo suave, bordes finos, azul como único acento. */
-:root { --page: #f6f6f3; --d-r: 18px; --d-gap: 16px; --up: #1f7a3d; --up-soft: rgba(31, 122, 61, .12); --down: #c42b1c; --down-soft: rgba(196, 43, 28, .1); }
+:root { --page: #f6f8f9; --d-r: 16px; --d-gap: 16px; --up: #1f7a3d; --up-soft: rgba(31, 122, 61, .12); --down: #c42b1c; --down-soft: rgba(196, 43, 28, .1); }
 :root[data-theme='dark'] { --page: #0d0c0b; --up: #6fd08c; --up-soft: rgba(111, 208, 140, .14); --down: #ff8f80; --down-soft: rgba(255, 143, 128, .14); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme='light']) { --page: #0d0c0b; --up: #6fd08c; --up-soft: rgba(111, 208, 140, .14); --down: #ff8f80; --down-soft: rgba(255, 143, 128, .14); } }
 .shell--rail, .shell--rail .shell__body { background: var(--page); }
@@ -144,7 +144,7 @@ a.d-kpi:active { transform: scale(.985); }
 .d-fun__track i { display: block; height: 100%; border-radius: 6px; transition: width .4s var(--ease); }
 .d-fun__c { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
 .d-fun__v { font-size: var(--fs-xs); color: var(--text-2); min-width: 48px; text-align: right; }
-.st-nuevo { --st: #7a8aa8; } .st-contactado { --st: #2052eb; } .st-cotizado { --st: #b8860b; } .st-cerrado { --st: #1f7a3d; } .st-perdido { --st: #9a9a94; }
+.st-nuevo { --st: #7a8aa8; } .st-contactado { --st: #0118df; } .st-cotizado { --st: #b8860b; } .st-cerrado { --st: #1f7a3d; } .st-perdido { --st: #9a9a94; }
 :root[data-theme='dark'] .st-nuevo { --st: #9aa8c4; } :root[data-theme='dark'] .st-contactado { --st: #8aa5ff; } :root[data-theme='dark'] .st-cotizado { --st: #e0b84a; } :root[data-theme='dark'] .st-cerrado { --st: #6fd08c; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .st-nuevo { --st: #9aa8c4; } :root:not([data-theme='light']) .st-contactado { --st: #8aa5ff; } :root:not([data-theme='light']) .st-cotizado { --st: #e0b84a; } :root:not([data-theme='light']) .st-cerrado { --st: #6fd08c; } }
 .d-fun__track i.st-nuevo, .d-fun__track i.st-contactado, .d-fun__track i.st-cotizado, .d-fun__track i.st-cerrado, .d-fun__track i.st-perdido { background: var(--st); }

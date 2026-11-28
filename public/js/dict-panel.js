@@ -1,6 +1,6 @@
 // Textos del Panel, Contactos (CRM) y Día (caja y productos). Se unen a dict.js.
 export const es = {
-  'nav.crm': 'Contactos', 'nav.day': 'Día', 'mas.chatsSub': 'Conversaciones con clientes y traspaso a una persona',
+  'nav.crm': 'Clientes', 'nav.day': 'Día', 'mas.chatsSub': 'Conversaciones con clientes y traspaso a una persona',
   // Panel
   'pn.gMorning': 'Buenos días', 'pn.gAfternoon': 'Buenas tardes', 'pn.gEvening': 'Buenas noches', 'pn.closeDay': 'Cerrar el día',
   'pn.kIncome': 'Ingresos de hoy', 'pn.kApps': 'Citas de hoy', 'pn.kContacts': 'Contactos nuevos', 'pn.kAttention': 'Por atender',
@@ -42,7 +42,7 @@ export const es = {
 };
 
 export const en = {
-  'nav.crm': 'Contacts', 'nav.day': 'Daily', 'mas.chatsSub': 'Customer conversations and handoff to a person',
+  'nav.crm': 'Clients', 'nav.day': 'Daily', 'mas.chatsSub': 'Customer conversations and handoff to a person',
   'pn.gMorning': 'Good morning', 'pn.gAfternoon': 'Good afternoon', 'pn.gEvening': 'Good evening', 'pn.closeDay': 'Close the day',
   'pn.kIncome': 'Income today', 'pn.kApps': 'Bookings today', 'pn.kContacts': 'New contacts', 'pn.kAttention': 'Needs you',
   'pn.vsYesterday': 'vs yesterday', 'pn.vsLastWeek': 'vs same day last week', 'pn.last7': 'last 7 days', 'pn.waiting': 'conversations waiting for a person', 'pn.noWaiting': 'nobody is waiting',

@@ -29,7 +29,16 @@ export default function dia({ main, params, go, isCurrent }) {
     if (busyLoad) return; busyLoad = true;
     try { D = await get(`/api/staff/dia/${ymd}`); } catch (e) { if (!D) { clear(root); root.append(h('div', { class: 'empty' }, h('h3', null, t('err.generic')), h('p', null, e.message), h('button', { class: 'btn btn--primary', type: 'button', onclick: () => load() }, t('common.retry')))); busyLoad = false; return; } toast(e.message, true); }
     busyLoad = false;
-    if (isCurrent()) paint(quiet);
+    if (isCurrent()) { paint(quiet); openFromLink(); }
+  }
+  // Accesos directos del botón "Registrar": #/dia/AAAA-MM-DD/caja/venta, /caja/gasto, /productos/nuevo
+  let linked = false;
+  function openFromLink() {
+    if (linked) return; linked = true;
+    const what = params[2];
+    if (D.cerrado && what !== 'nuevo') return;
+    if (what === 'venta') moveSheet('ingreso'); else if (what === 'gasto') moveSheet('egreso'); else if (what === 'nuevo') productSheet(null);
+    if (what) history.replaceState(null, '', `#/dia/${ymd}${tab !== 'caja' ? `/${tab}` : ''}`);
   }
   const act = async (fn, ok) => { try { await fn(); if (ok) toast(ok); await load(true); } catch (e) { toast(e.message, true); } };
 
@@ -156,7 +165,7 @@ export default function dia({ main, params, go, isCurrent }) {
     date.addEventListener('change', () => { if (isYmd(date.value) && date.value <= hoy) goDay(date.value); });
     const r = D.resumen;
     root.append(
-      h('header', { class: 'd-head' }, h('div', null, h('h1', null, t('nav.day')), h('p', null, t('day.sub'))),
+      h('header', { class: 'd-head' }, h('div', null, h('h1', null, t(`day.title_${tab}`)), h('p', null, t(`day.sub_${tab}`))),
         h('span', { class: `badge ${D.cerrado ? 'badge--ok' : 'badge--info'}` }, h('i', { class: 'dot' }), D.cerrado ? t('day.closed') : t('day.open'))),
       h('div', { class: 'y-nav' },
         h('button', { class: 'btn btn--ghost btn--icon btn--sm', type: 'button', 'aria-label': t('day.prev'), onclick: () => goDay(prev) }, icon('left', 16)),

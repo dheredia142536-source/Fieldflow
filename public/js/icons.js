@@ -81,7 +81,7 @@ export function logo(size = 32) {
   s.setAttribute('height', size);
   s.setAttribute('viewBox', '0 0 64 64');
   s.setAttribute('aria-hidden', 'true');
-  s.innerHTML = '<rect width="64" height="64" rx="16" fill="#2052eb"/><path d="M17 43C21 27 31 19 48 19C47 36 38 46 24 46" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 49C23 39 29 33 37 29" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>';
+  s.innerHTML = '<rect width="64" height="64" rx="16" fill="#0118df"/><path d="M17 43C21 27 31 19 48 19C47 36 38 46 24 46" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 49C23 39 29 33 37 29" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>';
   return s;
 }
 

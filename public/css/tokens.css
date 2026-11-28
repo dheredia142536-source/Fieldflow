@@ -1,4 +1,4 @@
-/* FieldFlow · tokens de diseño (azul eléctrico + rubor sobre carbón cálido; tipografía grotesca de peso 500) */
+/* FieldFlow · tokens de diseño (estilo DOSS: blanco y gris frío, tinta #161616, azul eléctrico #0118df, píldoras y paneles planos) */
 :root {
   color-scheme: light;
   /* Paleta base */
@@ -11,41 +11,41 @@
   --ink: #000000;
   --white: #ffffff;
   --evergreen: #375033;
-  --sky: #2052eb;
-  --blue: #2052eb;
-  --blush: #fadbe5;
+  --sky: #0118df;
+  --blue: #0118df;
+  --blush: #efece3;
   --charcoal: #262320;
   --orange: #ff4000;
 
   /* Semánticos (claro) */
   --bg: #ffffff;
   --surface: #ffffff;
-  --card: #ecece8;
-  --text: #262320;
-  --text-2: #5f5b56;
-  --line: rgba(0, 0, 0, 0.1);
-  --line-strong: rgba(0, 0, 0, 0.2);
-  --accent: var(--sky);               /* decorativo, íconos, enfoque */
-  --accent-strong: #2052eb;           /* fondos de botón y texto de enlace (contraste AA con blanco) */
+  --card: #f6f8f9;
+  --text: #161616;
+  --text-2: #625e55;
+  --line: #e6e8ea;
+  --line-strong: #d6d6d6;
+  --accent: #0118df;                  /* azul eléctrico: acciones, enlaces, enfoque */
+  --accent-strong: #0118df;           /* fondos de botón y texto de enlace (contraste AA con blanco) */
   --on-accent: #ffffff;
-  --accent-soft: rgba(32, 82, 235, 0.1);
+  --accent-soft: rgba(1, 24, 223, 0.07);
   --green: var(--evergreen);
   --green-soft: rgba(55, 80, 51, 0.1);
   --warn: #b83200;                     /* texto de alerta (contraste AA) */
   --warn-soft: rgba(255, 64, 0, 0.12);
   --ok: #2c6b32;
-  --focus: #2052eb;
-  --input-bg: rgba(0, 0, 0, 0.03);
-  --bubble-me: #e4eafd;
+  --focus: #0118df;
+  --input-bg: #ffffff;
+  --bubble-me: #e8ebfd;
   --bubble-them: #ffffff;
   --rows-color: %23375033;
   --rows: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='180' viewBox='0 0 640 180'%3E%3Cg fill='none' stroke='%23375033' stroke-opacity='.2' stroke-width='1.2'%3E%3Cpath d='M-10 22C140 -6 300 48 650 14'/%3E%3Cpath d='M-10 44C140 16 300 70 650 36'/%3E%3Cpath d='M-10 66C140 38 300 92 650 58'/%3E%3Cpath d='M-10 88C140 60 300 114 650 80'/%3E%3Cpath d='M-10 110C140 82 300 136 650 102'/%3E%3Cpath d='M-10 132C140 104 300 158 650 124'/%3E%3Cpath d='M-10 154C140 126 300 180 650 146'/%3E%3C/g%3E%3C/svg%3E");
 
   /* Parcelas del calendario (texto blanco, contraste AA) */
-  --p1: #375033; --p2: #2052eb; --p3: #8a4b2d; --p4: #566b2a; --p5: #b83200; --p6: #4a5568;
+  --p1: #375033; --p2: #0118df; --p3: #8a4b2d; --p4: #566b2a; --p5: #b83200; --p6: #4a5568;
 
   /* Tipografía */
-  --font: 'Vanilla Sans', 'Helvetica Neue', Helvetica, Arial, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font: 'Inter Variable', 'Inter', 'Switzer', 'Helvetica Neue', Helvetica, Arial, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --fs-xs: 0.75rem;
   --fs-sm: 0.875rem;
   --fs-md: 1rem;
@@ -61,10 +61,10 @@
   --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px; --s-8: 72px;
 
   /* Radios y sombras */
-  --r-sm: 8px; --r-md: 12px; --r-lg: 18px; --r-pill: 999px;
-  --shadow-1: rgba(0, 0, 0, 0.12) 0 0.5px 2px 0;
-  --shadow-2: rgba(0, 0, 0, 0.12) 0 2px 4px 0;
-  --shadow-3: rgba(0, 0, 0, 0.08) 0 2px 10px 0;
+  --r-sm: 4px; --r-md: 8px; --r-lg: 16px; --r-pill: 9999px;
+  --shadow-1: none;
+  --shadow-2: rgba(0, 0, 0, 0.08) 0 1px 3px 0;
+  --shadow-3: rgba(0, 0, 0, 0.12) 0 4px 8px 0;
   --shadow-pop: rgba(0, 0, 0, 0.18) 0 8px 30px 0;
 
   /* Safe areas (iPhone) */
@@ -75,7 +75,7 @@
 
   --tabbar-h: 84px;
   --topbar-h: 60px;
-  --rail-w: 248px;
+  --rail-w: 256px;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -83,24 +83,24 @@
 :root[data-theme='dark'] {
   color-scheme: dark;
   --bg: #121110;
-  --surface: #1b1a18;
-  --card: #242220;
+  --surface: #1a1918;
+  --card: #211f1e;
   --text: #f4f3ee;
   --text-2: #b9b8ab;
   --line: rgba(255, 255, 255, 0.12);
   --line-strong: rgba(255, 255, 255, 0.24);
-  --accent: #8aa5ff;
-  --accent-strong: #8aa5ff;
-  --sky: #8aa5ff;
-  --on-accent: #0a1230;
-  --accent-soft: rgba(138, 165, 255, 0.16);
+  --accent: #8f9cff;
+  --accent-strong: #8f9cff;
+  --sky: #8f9cff;
+  --on-accent: #0a0f3a;
+  --accent-soft: rgba(143, 156, 255, 0.16);
   --green: #8fbf86;
   --green-soft: rgba(143, 191, 134, 0.14);
   --warn: #ff9a73;
   --warn-soft: rgba(255, 128, 85, 0.16);
   --ok: #8fd18a;
-  --focus: #8aa5ff;
-  --input-bg: rgba(255, 255, 255, 0.06);
+  --focus: #8f9cff;
+  --input-bg: #1a1918;
   --bubble-me: #1c2a66;
   --bubble-them: #23271e;
   --shadow-1: rgba(0, 0, 0, 0.5) 0 0.5px 2px 0;
@@ -115,24 +115,24 @@
   :root:not([data-theme='light']) {
     color-scheme: dark;
     --bg: #121110;
-    --surface: #1b1a18;
-    --card: #242220;
+    --surface: #1a1918;
+    --card: #211f1e;
     --text: #f4f3ee;
     --text-2: #b9b8ab;
     --line: rgba(255, 255, 255, 0.12);
     --line-strong: rgba(255, 255, 255, 0.24);
-    --accent: #8aa5ff;
-    --accent-strong: #8aa5ff;
-  --sky: #8aa5ff;
-    --on-accent: #0a1230;
-    --accent-soft: rgba(138, 165, 255, 0.16);
+    --accent: #8f9cff;
+    --accent-strong: #8f9cff;
+  --sky: #8f9cff;
+    --on-accent: #0a0f3a;
+    --accent-soft: rgba(143, 156, 255, 0.16);
     --green: #8fbf86;
     --green-soft: rgba(143, 191, 134, 0.14);
     --warn: #ff9a73;
     --warn-soft: rgba(255, 128, 85, 0.16);
     --ok: #8fd18a;
-    --focus: #8aa5ff;
-    --input-bg: rgba(255, 255, 255, 0.06);
+    --focus: #8f9cff;
+    --input-bg: #1a1918;
     --bubble-me: #1c2a66;
     --bubble-them: #23271e;
     --shadow-1: rgba(0, 0, 0, 0.5) 0 0.5px 2px 0;

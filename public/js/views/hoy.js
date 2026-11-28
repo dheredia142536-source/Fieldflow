@@ -237,6 +237,17 @@ function kpis(data) {
     kpi({ ic: 'chat', label: t('pn.kAttention'), value: int(att), caption: att ? t('pn.waiting') : t('pn.noWaiting'), href: '#/chats', invert: true }));
 }
 
+// Cuatro accesos grandes para lo que más se hace: vender, gastar, mover inventario y anotar un cliente.
+function quickTiles() {
+  const d = todayLocal();
+  const tile = (ic, title, sub, href) => h('a', { class: 'qa__tile', href }, h('span', { class: 'qa__top' }, icon(ic, 22), icon('right', 18)), h('span', null, h('strong', null, title), h('small', null, sub)));
+  return h('section', { class: 'qa-wrap' }, h('h2', null, t('rg.ask')), h('div', { class: 'qa' },
+    tile('download', t('rg.sale'), t('rg.saleSub'), `#/dia/${d}/caja/venta`),
+    tile('send', t('rg.expense'), t('rg.expenseSub'), `#/dia/${d}/caja/gasto`),
+    tile('leaf', t('rg.stock'), t('rg.stockSub'), `#/dia/${d}/productos`),
+    tile('users', t('rg.client'), t('rg.clientSub'), '#/crm/nuevo')));
+}
+
 const greet = () => { const hr = Number(toLocal(new Date()).hm.slice(0, 2)); return t(hr < 12 ? 'pn.gMorning' : hr < 19 ? 'pn.gAfternoon' : 'pn.gEvening'); };
 
 export default function hoy({ main, go, isCurrent }) {
@@ -261,10 +272,10 @@ export default function hoy({ main, go, isCurrent }) {
     const y = window.scrollY;
     clear(root);
     if (!data) {
-      root.append(header(), h('div', { class: 'd-kpis' }, [0, 1, 2, 3].map(() => skel('d-skel--kpi'))), h('div', { class: 'd-grid' }, skel('d-skel--chart'), skel('d-skel--chart')));
+      root.append(header(), quickTiles(), h('div', { class: 'd-kpis' }, [0, 1, 2, 3].map(() => skel('d-skel--kpi'))), h('div', { class: 'd-grid' }, skel('d-skel--chart'), skel('d-skel--chart')));
       return;
     }
-    root.append(header(), kpis(data),
+    root.append(header(), quickTiles(), kpis(data),
       h('div', { class: 'd-grid' }, revenueCard(S, data, paint), calendarCard(S, data, paint)),
       h('div', { class: 'd-grid3' }, attentionCard(data), cashCard(data), funnelCard(data)),
       inboxCard(data));

@@ -4,6 +4,7 @@ import { state, pref, applyTheme } from './state.js';
 import { h, clear, loading, langSwitch, toast } from './ui.js';
 import { icon, logo } from './icons.js';
 import { setPalette } from './components.js';
+import { todayLocal } from './time.js';
 
 const root = document.getElementById('app');
 
@@ -60,7 +61,7 @@ function toggleTheme() {
 function syncThemeColor() {
   const dark = themeDark();
   const onWelcome = !state.staff && !state.client && !location.hash.replace(/^#\/?/, '');
-  const color = onWelcome ? '#2052eb' : dark ? '#121110' : '#ffffff';
+  const color = onWelcome ? '#0118df' : dark ? '#121110' : '#ffffff';
   const metas = document.querySelectorAll('meta[name="theme-color"]');
   metas.forEach((m, i) => { if (i) m.remove(); });
   if (metas[0]) metas[0].setAttribute('content', color); else document.head.append(h('meta', { name: 'theme-color', content: color }));
@@ -76,28 +77,51 @@ async function logout() {
 }
 
 // ── Shell ────────────────────────────────────────────────────────────────────
-const NAV = [
-  { id: 'hoy', icon: 'home', key: 'nav.today', tab: true },
-  { id: 'calendario', icon: 'calendar', key: 'nav.calendar', tab: true },
-  { id: 'chats', icon: 'chat', key: 'nav.chats', tab: false },
-  { id: 'crm', icon: 'users', key: 'nav.crm', tab: true },
-  { id: 'dia', icon: 'doc', key: 'nav.day', tab: true },
-  { id: 'config', icon: 'settings', key: 'nav.settings', tab: false },
-  { id: 'mas', icon: 'more', key: 'nav.more', tab: false, railHidden: true },
+const dayHref = (tab) => () => `#/dia/${todayLocal()}${tab ? `/${tab}` : ''}`;
+const onDay = (tab) => (n, p) => n === 'dia' && (p[1] || 'caja') === tab;
+// Menú lateral en grupos (estilo DOSS): lo diario arriba, personas y agenda después, ajustes al final.
+const NAV_GROUPS = [
+  { items: [{ id: 'hoy', icon: 'home', key: 'nav.home', href: () => '#/hoy', on: (n) => n === 'hoy', tab: true }] },
+  { label: 'nav.gBiz', items: [
+    { id: 'ventas', icon: 'download', key: 'nav.sales', short: 'nav.salesTab', href: dayHref(''), on: onDay('caja'), tab: true },
+    { id: 'inventario', icon: 'leaf', key: 'nav.inventory', href: dayHref('productos'), on: onDay('productos'), tab: true },
+    { id: 'cierre', icon: 'check', key: 'nav.closing', href: dayHref('cierre'), on: onDay('cierre') }] },
+  { label: 'nav.gPeople', items: [
+    { id: 'crm', icon: 'users', key: 'nav.crm', href: () => '#/crm', on: (n) => n === 'crm' || n === 'clientes', tab: true },
+    { id: 'calendario', icon: 'calendar', key: 'nav.calendar', href: () => '#/calendario', on: (n) => n === 'calendario' },
+    { id: 'chats', icon: 'chat', key: 'nav.chats', href: () => '#/chats', on: (n) => n === 'chats' }] },
 ];
+const NAV_SETTINGS = { id: 'config', icon: 'settings', key: 'nav.settings', href: () => '#/config', on: (n) => n === 'config' };
+const ALL_ITEMS = [...NAV_GROUPS.flatMap((g) => g.items), NAV_SETTINGS];
+const TITLE_KEY = { mas: 'nav.more', clientes: 'nav.crm', dia: null };
 
-function navLink(item, name, cls) {
+function navLink(item, name, params, cls) {
   const badge = item.id === 'chats' && state.attention > 0 ? h('span', { class: 'count', 'aria-label': t('nav.pending', { n: state.attention }) }, String(state.attention)) : null;
-  const current = name === item.id || (item.id === 'crm' && name === 'clientes') || (item.id === 'mas' && ['config'].includes(name));
-  return h('a', { href: `#/${item.id}`, 'aria-current': current ? 'page' : null, class: cls, title: t(item.key) }, icon(item.icon, 22), h('span', { class: 'navlabel' }, t(item.key)), badge);
+  const current = item.on(name, params) || (item.id === 'config' && name === 'mas');
+  return h('a', { href: item.href(), 'aria-current': current ? 'page' : null, class: cls, title: t(item.key) }, icon(item.icon, 20), h('span', { class: 'navlabel' }, t(item.key)), badge);
 }
 async function newCita() {
   const m = await import('./views/cita-sheet.js');
   m.openNewCitaSheet({ onDone: () => route() });
 }
-const fab = () => h('button', { class: 'fab', type: 'button', 'aria-label': t('nav.newCita'), onclick: newCita }, icon('plus', 26));
+// "Registrar": un solo botón con lo que más se hace en el día (venta, gasto, inventario, cliente, cita).
+async function openRegister() {
+  const { openSheet } = await import('./ui.js');
+  const d = todayLocal();
+  let sh = null;
+  const opt = (ic, title, sub, run) => h('button', { class: 'regopt', type: 'button', onclick: () => { sh.close(); run(); } },
+    h('span', { class: 'regopt__ic', 'aria-hidden': 'true' }, icon(ic, 22)), h('span', { class: 'regopt__tx' }, h('strong', null, title), h('small', null, sub)), icon('right', 18));
+  sh = openSheet({ title: t('rg.title'), body: h('div', { class: 'reggrid' },
+    opt('download', t('rg.sale'), t('rg.saleSub'), () => go(`#/dia/${d}/caja/venta`)),
+    opt('send', t('rg.expense'), t('rg.expenseSub'), () => go(`#/dia/${d}/caja/gasto`)),
+    opt('leaf', t('rg.stock'), t('rg.stockSub'), () => go(`#/dia/${d}/productos`)),
+    opt('plus', t('rg.product'), t('rg.productSub'), () => go(`#/dia/${d}/productos/nuevo`)),
+    opt('users', t('rg.client'), t('rg.clientSub'), () => go('#/crm/nuevo')),
+    opt('calendar', t('rg.cita'), t('rg.citaSub'), newCita)) });
+}
+const fab = () => h('button', { class: 'fab', type: 'button', 'aria-label': t('rg.title'), onclick: openRegister }, icon('plus', 26));
 
-function buildShell(role, name) {
+function buildShell(role, name, params = []) {
   const biz = state.pub.nombre || 'FieldFlow';
   if (role === 'client') {
     const tabs = [{ id: 'chat', icon: 'chat', key: 'nav.assistant' }, { id: 'citas', icon: 'calendar', key: 'nav.appointments' }];
@@ -116,20 +140,20 @@ function buildShell(role, name) {
     h('div', { class: 'rail__head' },
       h('a', { class: 'brand', href: '#/hoy', title: biz }, logo(32), h('span', { class: 'navlabel' }, biz)),
       h('button', { class: 'btn btn--ghost btn--icon btn--sm rail__toggle', type: 'button', 'aria-label': t(mini ? 'nav.expandMenu' : 'nav.collapse'), 'aria-pressed': String(mini), onclick: toggleRail }, icon(mini ? 'expand' : 'collapse', 18))),
-    h('nav', { 'aria-label': t('nav.main') }, NAV.filter((n) => !n.railHidden).map((n) => navLink(n, name))),
+    h('button', { class: 'btn btn--primary rail__reg', type: 'button', title: t('rg.title'), onclick: openRegister }, icon('plus', 18), h('span', { class: 'navlabel' }, t('rg.title'))),
+    h('nav', { 'aria-label': t('nav.main') }, NAV_GROUPS.map((g) => h('div', { class: 'navgroup' }, g.label ? h('div', { class: 'navgroup__t' }, t(g.label)) : null, g.items.map((n) => navLink(n, name, params))))),
     h('div', { class: 'rail__foot' },
-      mini ? h('button', { class: 'btn btn--primary btn--icon', type: 'button', 'aria-label': t('nav.newCita'), title: t('nav.newCita'), onclick: newCita }, icon('plus', 20))
-        : h('div', { class: 'railcard' }, h('strong', null, t('nav.quickTitle')), h('span', null, t('nav.quickSub')),
-          h('button', { class: 'btn btn--primary btn--sm', type: 'button', onclick: newCita }, icon('plus', 16), t('nav.newCita'))),
+      navLink(NAV_SETTINGS, name, params),
       h('div', { class: 'row rail__prefs' }, mini ? null : langSeg(), themeBtn()),
-      h('button', { class: 'navlink', type: 'button', onclick: logout, title: t('nav.logout') }, icon('logout', 22), h('span', { class: 'navlabel' }, t('nav.logout')))));
+      h('button', { class: 'navlink', type: 'button', onclick: logout, title: t('nav.logout') }, icon('logout', 20), h('span', { class: 'navlabel' }, t('nav.logout')))));
+  const cur = ALL_ITEMS.find((n) => n.on(name, params));
   const top = h('header', { class: 'topbar' },
     h('a', { class: 'brand', href: '#/hoy', 'aria-label': biz }, logo(32)),
-    h('div', { class: 'topbar__title' }, t(name === 'clientes' ? 'nav.crm' : NAV.find((n) => n.id === name)?.key || 'nav.today')),
+    h('div', { class: 'topbar__title' }, t(cur?.key || TITLE_KEY[name] || 'nav.home')),
     h('span', { class: 'only-sm topbar__act' },
       h('a', { class: 'btn btn--ghost btn--icon btn--sm tb', href: '#/chats', 'aria-label': t('nav.chats'), 'aria-current': name === 'chats' ? 'page' : null }, icon('chat', 20), state.attention > 0 ? h('span', { class: 'count', 'aria-label': t('nav.pending', { n: state.attention }) }, String(state.attention)) : null),
       h('a', { class: 'btn btn--ghost btn--icon btn--sm tb', href: '#/mas', 'aria-label': t('nav.more'), 'aria-current': ['mas', 'config'].includes(name) ? 'page' : null }, icon('menu', 20))));
-  const tabs = NAV.filter((n) => n.tab).map((n) => navLink(n, name));
+  const tabs = ALL_ITEMS.filter((n) => n.tab).map((n) => navLink({ ...n, key: n.short || n.key }, name, params));
   const bar = h('nav', { class: 'tabbar tabbar--fab', 'aria-label': t('nav.main') }, tabs.slice(0, 2), fab(), tabs.slice(2));
   const main = h('main', { class: 'main', id: 'main', tabindex: '-1' });
   return { el: h('div', { class: `shell shell--rail${mini ? ' shell--mini' : ''}`, 'data-route': name }, h('a', { class: 'skip-link', href: '#main', onclick: (e) => { e.preventDefault(); main.focus(); } }, t('common.skip')), rail, h('div', { class: 'shell__body' }, top, main), bar), main };
@@ -160,7 +184,7 @@ async function route() {
   let ld = null;
   clear(root);
   if (role) {
-    const sh = buildShell(role, page);
+    const sh = buildShell(role, page, params);
     root.append(sh.el);
     main = sh.main;
     ld = loading();

@@ -4,6 +4,7 @@ import { h, langSwitch } from '../ui.js';
 import { icon } from '../icons.js';
 import { t, getLang, setLang } from '../i18n.js';
 import { state } from '../state.js';
+import { todayLocal } from '../time.js';
 import { isIOS, isStandalone, canPrompt, promptInstall } from '../install.js';
 
 export default function mas({ main, go, rerender, toggleTheme }) {
@@ -11,7 +12,9 @@ export default function mas({ main, go, rerender, toggleTheme }) {
   main.append(h('div', { class: 'stack--lg stack' },
     h('div', { class: 'pagehead' }, h('div', null, h('h1', null, t('nav.more')), h('p', null, state.staff?.correo || ''))),
     h('div', { class: 'list' },
+      link('#/calendario', 'calendar', t('nav.calendar'), t('mas.calSub')),
       link('#/chats', 'chat', t('nav.chats'), t('mas.chatsSub')),
+      link(`#/dia/${todayLocal()}/cierre`, 'check', t('nav.closing'), t('mas.closeSub')),
       link('#/config', 'settings', t('nav.settings'), t('mas.settingsSub'))),
     h('section', { class: 'card card--surface stack' }, h('h2', { class: 'sectiontitle' }, t('mas.prefs')),
       h('div', { class: 'statusrow' }, h('span', null, t('common.language')), langSwitch(getLang(), (c) => { setLang(c); rerender(); })),

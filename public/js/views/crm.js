@@ -16,7 +16,7 @@ const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-
 const waLink = (tel) => `https://wa.me/${String(tel).replace(/\D+/g, '')}`;
 const histIcon = { nota: 'edit', llamada: 'phone', visita: 'pin', correo_enviado: 'send', correo_recibido: 'mail', etapa: 'target' };
 
-export default function crm({ main, go, isCurrent }) {
+export default function crm({ main, go, params = [], isCurrent }) {
   let list = null; let q = ''; let view = 'board';
   try { view = localStorage.getItem(VIEW) === 'list' ? 'list' : 'board'; } catch { /* sin almacenamiento */ }
   const root = h('div', { class: 'd-page' });
@@ -186,5 +186,5 @@ export default function crm({ main, go, isCurrent }) {
   }
 
   root.append(h('div', { class: 'd-head' }, h('div', null, h('h1', null, t('nav.crm')))), h('div', { class: 'k-board' }, [0, 1, 2].map(() => skel('d-skel--chart'))));
-  load();
+  load().then(() => { if (params[0] === 'nuevo' && isCurrent()) { history.replaceState(null, '', '#/crm'); openEdit(null); } });
 }
