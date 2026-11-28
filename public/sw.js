@@ -1,6 +1,6 @@
 /* FieldFlow · service worker. Versión y lista de precarga las estampa dev/stamp-sw.mjs al compilar. */
-const VERSION = 'a26cfde6bc';
-const PRECACHE = ["/","/css/app.css","/css/base.css","/css/campo.css","/css/dash.css","/css/doss.css","/css/tokens.css","/fonts/inter-latin-ext-wght-normal.woff2","/fonts/inter-latin-wght-normal.woff2","/icons/apple-touch-icon.png","/icons/favicon-32.png","/icons/favicon.svg","/icons/icon-192.png","/icons/icon-512.png","/icons/icon-maskable-512.png","/img/welcome-desktop.webp","/img/welcome-mobile.webp","/js/api.js","/js/app.js","/js/components.js","/js/dict-campo.js","/js/dict-panel.js","/js/dict.js","/js/dui.js","/js/fmt.js","/js/i18n.js","/js/icons.js","/js/img.js","/js/install.js","/js/legal-content.js","/js/state.js","/js/theme-init.js","/js/time.js","/js/ui.js","/js/views/calendario.js","/js/views/chat.js","/js/views/chats.js","/js/views/cita-sheet.js","/js/views/citas.js","/js/views/config.js","/js/views/crm.js","/js/views/dia.js","/js/views/ganado.js","/js/views/hoy.js","/js/views/legal.js","/js/views/login.js","/js/views/mas.js","/js/views/recuperar.js","/js/views/registro.js","/js/views/sitenav.js","/js/views/terrenos.js","/js/views/welcome.js","/js/voice.js","/manifest.webmanifest","/offline.html"];
+const VERSION = '18ef35ffed';
+const PRECACHE = ["/","/css/app.css","/css/base.css","/css/campo.css","/css/dash.css","/css/doss.css","/css/tokens.css","/fonts/inter-latin-ext-wght-normal.woff2","/fonts/inter-latin-wght-normal.woff2","/icons/apple-touch-icon.png","/icons/favicon-32.png","/icons/favicon.svg","/icons/icon-192.png","/icons/icon-512.png","/icons/icon-maskable-512.png","/img/welcome-desktop.webp","/img/welcome-mobile.webp","/js/api.js","/js/app.js","/js/components.js","/js/dict-campo.js","/js/dict-panel.js","/js/dict.js","/js/dui.js","/js/fmt.js","/js/i18n.js","/js/icons.js","/js/img.js","/js/install.js","/js/legal-content.js","/js/state.js","/js/theme-init.js","/js/time.js","/js/ui.js","/js/vendor/qrcode.js","/js/views/calendario.js","/js/views/chat.js","/js/views/chats.js","/js/views/cita-sheet.js","/js/views/citas.js","/js/views/config.js","/js/views/crm.js","/js/views/dia.js","/js/views/enlace.js","/js/views/entrar.js","/js/views/ganado.js","/js/views/hoy.js","/js/views/legal.js","/js/views/login.js","/js/views/mas.js","/js/views/recuperar.js","/js/views/registro.js","/js/views/sitenav.js","/js/views/terrenos.js","/js/views/welcome.js","/js/voice.js","/manifest.webmanifest","/offline.html"];
 const CACHE = `fieldflow-${VERSION}`;
 
 self.addEventListener('install', (e) => {
@@ -22,7 +22,7 @@ self.addEventListener('fetch', (e) => {
   // Navegación: se abre al instante con la app guardada y se actualiza en segundo plano (sin red: página offline).
   if (req.mode === 'navigate') {
     e.respondWith((async () => {
-      const isApp = url.pathname === '/' || url.pathname === '/terminos' || url.pathname === '/privacidad';
+      const isApp = url.pathname === '/' || url.pathname === '/terminos' || url.pathname === '/privacidad' || url.pathname.startsWith('/n/');
       const hit = isApp ? await caches.match('/') : null;
       const net = fetch(req).then((res) => { if (url.pathname === '/' && res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put('/', copy)); } return res; });
       if (hit) { net.catch(() => {}); return hit; }

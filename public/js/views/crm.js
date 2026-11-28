@@ -158,6 +158,7 @@ export default function crm({ main, go, params = [], isCurrent }) {
         h('div', { class: 'k-actions' },
           c.telefono ? h('a', { class: 'btn btn--secondary btn--sm', href: `tel:${c.telefono}` }, icon('phone', 16), t('crm.call')) : null,
           c.telefono ? h('a', { class: 'btn btn--secondary btn--sm', href: waLink(c.telefono), target: '_blank', rel: 'noopener noreferrer' }, icon('chat', 16), 'WhatsApp') : null,
+          c.telefono ? h('button', { class: 'btn btn--secondary btn--sm', type: 'button', onclick: async () => { try { const e = await get('/api/staff/enlace'); const en = getLang() === 'en'; window.open(`${waLink(c.telefono)}?text=${encodeURIComponent(en ? `Hi ${c.nombre}! Book here in 1 minute: ${e.url}` : `¡Hola ${c.nombre}! Agenda aquí en 1 minuto: ${e.url}`)}`, '_blank', 'noopener'); } catch (er) { toast(er.message, true); } } }, icon('link', 16), t('crm.sendLink')) : null,
           c.correo ? h('button', { class: 'btn btn--primary btn--sm', type: 'button', onclick: () => compose(c, render) }, icon('mail', 16), t('crm.sendMail')) : null,
           r.conversacion_id ? h('a', { class: 'btn btn--secondary btn--sm', href: '#/chats', onclick: () => sh.close() }, icon('chat', 16), t('crm.openChat')) : null,
           h('button', { class: 'btn btn--ghost btn--sm', type: 'button', onclick: () => { sh.close(); openEdit(c); } }, icon('edit', 16), t('crm.edit'))),

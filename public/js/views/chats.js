@@ -23,7 +23,7 @@ export default async function chats({ main, params, isCurrent }) {
     if (!rows.length) { listEl.append(empty({ art: emptyArt(), title: t('chats.emptyTitle'), text: t('chats.emptyText') })); return; }
     rows.forEach((r) => listEl.append(h('a', { class: `item${r.id === activeId ? ' item--active' : ''}`, role: 'listitem', href: `#/chats/${r.id}`, 'aria-current': r.id === activeId ? 'true' : null },
       avatar(r.nombre || r.telefono),
-      h('div', { class: 'item__main' }, h('div', { class: 'item__title' }, r.nombre || `+${r.telefono}`), h('div', { class: 'item__sub' }, r.ultimo || '…')),
+      h('div', { class: 'item__main' }, h('div', { class: 'item__title' }, r.nombre || (String(r.telefono).startsWith('web-') ? t('link.visitor') : `+${r.telefono}`)), h('div', { class: 'item__sub' }, r.ultimo || '…')),
       h('div', { class: 'stack tight', style: 'justify-items:end' }, h('span', { class: 'item__meta' }, fmtRelative(r.ultimo_mensaje_en)),
         r.necesita_atencion ? h('span', { class: 'unread', role: 'img', 'aria-label': t('chats.needsAttention') }) : r.atendida_por === 'humano' ? h('span', { class: 'badge badge--info' }, t('chat.team')) : null))));
   };
@@ -74,7 +74,7 @@ export default async function chats({ main, params, isCurrent }) {
       h('div', { class: 'detailhead' },
         h('a', { class: 'btn btn--ghost btn--icon btn--sm only-sm-flex', href: '#/chats', 'aria-label': t('common.back') }, icon('left', 18)),
         avatar(conv.nombre || conv.telefono),
-        h('div', { class: 'grow' }, h('strong', null, conv.nombre || `+${conv.telefono}`), h('div', { class: 'hint' }, `+${conv.telefono}`)),
+        h('div', { class: 'grow' }, h('strong', null, conv.nombre || (String(conv.telefono).startsWith('web-') ? t('link.visitor') : `+${conv.telefono}`)), String(conv.telefono).startsWith('web-') ? null : h('div', { class: 'hint' }, `+${conv.telefono}`)),
         badge, takeBtn),
       list,
       h('div', { class: 'composer' }, ta, send));

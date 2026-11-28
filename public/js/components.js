@@ -1,12 +1,34 @@
-import { h } from './ui.js';
+import { h, toast, busy } from './ui.js';
+import { post } from './api.js';
 import { icon } from './icons.js';
 import { t } from './i18n.js';
 import { fmtIsoTime } from './time.js';
+
+// Formulario dentro del chat: nombre y teléfono, solo cuando la persona va a reservar (llegó por el enlace público).
+function identifyForm(ui, act) {
+  const nm = h('input', { class: 'input', autocomplete: 'name', maxlength: '80', placeholder: t('link.yourName'), 'aria-label': t('link.yourName') });
+  const tel = h('input', { class: 'input', type: 'tel', inputmode: 'tel', autocomplete: 'tel', maxlength: '20', placeholder: t('link.yourPhone'), 'aria-label': t('link.yourPhone') });
+  const ok = h('input', { type: 'checkbox' });
+  const go = h('button', { class: 'btn btn--primary btn--block', type: 'button' }, t('link.continue'));
+  const box = h('form', { class: 'ucard idform', novalidate: true },
+    h('h4', null, icon('user', 18), t('link.yourData')), nm, tel,
+    h('label', { class: 'check-line idform__ok' }, ok, h('span', null, t('link.consent'), ' ', h('a', { href: '/privacidad', target: '_blank', rel: 'noopener noreferrer' }, t('link.privacy')))), go);
+  box.addEventListener('submit', (e) => { e.preventDefault(); go.click(); });
+  go.addEventListener('click', () => busy(go, async () => {
+    try {
+      await post('/api/client/identificar', { nombre: nm.value, telefono: tel.value, acepta: ok.checked });
+      box.replaceChildren(h('h4', null, icon('check', 18), t('link.saved', { n: nm.value.trim().split(/\s+/)[0] })));
+      act?.(t('link.confirmLabel'), ui.payload || 'confirm');
+    } catch (e) { toast(e.message, true); }
+  }));
+  return box;
+}
 
 // Componentes interactivos que el asistente adjunta a sus mensajes.
 function uiBlock(ui, act, readonly) {
   if (!ui) return null;
   const btn = (o, cls) => h('button', { class: `chip ${cls || ''}`, type: 'button', disabled: readonly, onclick: (e) => act?.(o.label, o.payload, e.currentTarget) }, o.label);
+  if (ui.type === 'identify') return readonly ? null : identifyForm(ui, act);
   if (ui.type === 'chips') return h('div', { class: 'chips', role: 'group' }, (ui.options || []).map((o) => btn(o)));
   if (ui.type === 'confirm') {
     return h('div', { class: 'ucard' }, h('h4', null, icon('calendar', 18), ui.title),

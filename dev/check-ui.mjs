@@ -10,7 +10,7 @@ const bad = (m) => { fail++; console.log('  ✗', m); };
 const files = [];
 (function walk(d) { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else if (p.endsWith('.js') && !p.endsWith('dict.js')) files.push(p); } })(new URL('../public/js/', import.meta.url).pathname);
 const used = new Set();
-for (const f of files) for (const m of readFileSync(f, 'utf8').matchAll(/['"`]((?:common|err|nav|welcome|forgot|login|chat|install|citas|status|hoy|cal|cita|origin|chats|clients|mas|cfg|sim|reg|pn|crm|day|rg|ter|ga)\.[A-Za-z0-9_]+)['"`]/g)) used.add(m[1]);
+for (const f of files) for (const m of readFileSync(f, 'utf8').matchAll(/['"`]((?:common|err|nav|welcome|forgot|login|chat|install|citas|status|hoy|cal|cita|origin|chats|clients|mas|cfg|sim|reg|pn|crm|day|rg|ter|ga|link)\.[A-Za-z0-9_]+)['"`]/g)) used.add(m[1]);
 // Claves compuestas (se arman con una variable)
 for (const e of ['nuevo', 'contactado', 'cotizado', 'cerrado', 'perdido']) used.add(`crm.st_${e}`);
 for (const k of ['nota', 'llamada', 'visita', 'correo_recibido', 'correo_enviado', 'etapa']) used.add(`crm.h_${k}`);

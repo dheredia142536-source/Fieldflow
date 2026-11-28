@@ -9,6 +9,7 @@
   "rewrites": [
     { "source": "/terminos", "destination": "/index.html" },
     { "source": "/privacidad", "destination": "/index.html" },
+    { "source": "/n/:slug", "destination": "/index.html" },
     {
       "source": "/webhooks/whatsapp",
       "destination": "/api/whatsapp"

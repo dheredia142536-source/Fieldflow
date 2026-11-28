@@ -650,6 +650,61 @@ section('19. Ganado');
   ok(r.status === 200 && typeof r.data.activos === 'number', 'ganado: resumen de avisos para el Inicio');
 }
 
+section('20. Enlace público del negocio (sin cuenta)');
+{
+  r = await staff.call('GET', '/api/staff/enlace');
+  ok(r.status === 200 && /^[a-z0-9-]{3,40}$/.test(r.data.slug) && r.data.url.endsWith(`/n/${r.data.slug}`), 'enlace: se crea a partir del nombre del negocio');
+  const slugA = r.data.slug;
+  r = await staff.call('POST', '/api/staff/enlace', { slug: 'api' });
+  ok(r.status === 400, 'enlace: no permite nombres reservados');
+  r = await staff.call('POST', '/api/staff/enlace', { slug: 'Mi Finca Linda' });
+  ok(r.status === 200 && r.data.slug === 'mi-finca-linda', 'enlace: se puede personalizar (se limpia a minúsculas y guiones)');
+  const slugB = (await maria.call('GET', '/api/staff/enlace')).data.slug;
+  r = await maria.call('POST', '/api/staff/enlace', { slug: 'mi-finca-linda' });
+  ok(r.status === 400 && r.data.error === 'slug_taken', 'enlace: dos negocios no pueden tener el mismo');
+  ok(slugB && slugB !== 'mi-finca-linda', 'enlace: cada negocio tiene el suyo');
+
+  const visita = new Jar();
+  r = await visita.call('POST', '/api/public/n/no-existe/entrar', {});
+  ok(r.status === 404, 'visitante: un enlace inexistente da 404');
+  r = await visita.call('POST', '/api/public/n/mi-finca-linda/entrar', { idioma: 'es' });
+  ok(r.status === 200 && r.data.nuevo === true, 'visitante: entra por el enlace sin cuenta ni formulario');
+  r = await visita.call('GET', '/api/client/chat');
+  ok(r.status === 200 && r.data.mensajes.some((m) => m.rol === 'bot'), 'visitante: el bot lo saluda de inmediato con los servicios');
+  const cat = (await staff.call('GET', '/api/staff/catalogo')).data;
+  const svc = cat.servicios[0];
+  const dias = (await visita.call('POST', '/api/client/chat', { texto: 'Hola', payload: `svc:${svc.id}` })).data.mensajes.at(-1);
+  const ymdOpt = dias.meta.ui.options[0].payload;
+  const horas = (await visita.call('POST', '/api/client/chat', { texto: 'día', payload: ymdOpt })).data.mensajes.at(-1);
+  const slotP = horas.meta.ui.options[0].payload;
+  r = await visita.call('POST', '/api/client/chat', { texto: 'hora', payload: slotP });
+  ok(r.data.mensajes.at(-1).meta.ui.type === 'confirm', 'visitante: ve la tarjeta de confirmación sin dar datos todavía');
+  r = await visita.call('POST', '/api/client/chat', { texto: 'Confirmar', payload: 'confirm' });
+  ok(r.data.mensajes.at(-1).meta.ui.type === 'identify', 'visitante: al confirmar se le piden nombre y teléfono dentro del chat');
+  r = await visita.call('POST', '/api/client/identificar', { nombre: 'Ana', telefono: '123', acepta: true });
+  ok(r.status === 400, 'identificar: rechaza teléfonos inválidos');
+  r = await visita.call('POST', '/api/client/identificar', { nombre: 'Ana Ruiz', telefono: '3105550123', acepta: false });
+  ok(r.status === 400 && r.data.error === 'terms_required', 'identificar: exige aceptar el uso de datos');
+  r = await visita.call('POST', '/api/client/identificar', { nombre: 'Ana Ruiz', telefono: '310 555 0123', acepta: true });
+  ok(r.status === 200 && r.data.telefono === '573105550123', 'identificar: normaliza el teléfono de Colombia (57…)');
+  r = await visita.call('POST', '/api/client/chat', { texto: 'Confirmar', payload: 'confirm' });
+  ok(r.data.mensajes.at(-1).meta.ui?.type === 'cita', 'visitante: tras dar sus datos la cita queda agendada');
+  const rep = (await staff.call('GET', '/api/staff/enlace')).data;
+  ok(rep.ultimos30.entraron === 1 && rep.ultimos30.dejaron_datos === 1 && rep.ultimos30.agendaron === 1, 'enlace: cuenta entraron, dejaron datos y agendaron');
+  const cr = (await staff.call('GET', '/api/staff/crm')).data.contactos.find((c) => c.nombre === 'Ana Ruiz');
+  ok(cr && cr.telefono === '573105550123' && cr.origen === 'enlace', 'CRM: el visitante aparece como contacto con origen «enlace»');
+  const again = await visita.call('POST', '/api/public/n/mi-finca-linda/entrar', {});
+  ok(again.data.nuevo === false, 'visitante: si vuelve a abrir el enlace sigue su misma conversación');
+  r = await maria.call('GET', '/api/staff/crm');
+  ok(!r.data.contactos.some((c) => c.nombre === 'Ana Ruiz'), 'aislamiento: otro negocio no ve a ese visitante');
+  const v2 = new Jar();
+  await v2.call('POST', `/api/public/n/${slugB}/entrar`, {});
+  r = await v2.call('POST', '/api/client/chat', { texto: 'x', payload: `slot:${svc.id}|2030-01-01T15:00:00.000Z|x` });
+  ok(r.status === 200, 'visitante: el bot responde sin romperse con datos manipulados');
+  const sinNombre = (await staff.call('GET', '/api/staff/crm')).data.contactos.filter((c) => /visitante/i.test(c.nombre));
+  ok(sinNombre.length === 0, 'CRM: los visitantes que no dejaron datos no llenan los contactos');
+}
+
 console.log(`\n${pass} correctas, ${fail} con error`);
 llm.close();
 process.exit(fail ? 1 : 0);

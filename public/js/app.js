@@ -16,12 +16,13 @@ const STAFF = {
   crm: () => import('./views/crm.js'),
   dia: () => import('./views/dia.js'),
   clientes: () => import('./views/crm.js'),
+  enlace: () => import('./views/enlace.js'),
   terrenos: () => import('./views/terrenos.js'),
   ganado: () => import('./views/ganado.js'),
   mas: () => import('./views/mas.js'),
   config: () => import('./views/config.js'),
 };
-const PUBLIC = { '': () => import('./views/welcome.js'), negocio: () => import('./views/login.js'), registro: () => import('./views/registro.js'), recuperar: () => import('./views/recuperar.js'),
+const PUBLIC = { n: () => import('./views/entrar.js'), '': () => import('./views/welcome.js'), negocio: () => import('./views/login.js'), registro: () => import('./views/registro.js'), recuperar: () => import('./views/recuperar.js'),
   terminos: () => import('./views/legal.js').then((m) => ({ default: (c) => m.default({ ...c, doc: 'terminos' }) })),
   privacidad: () => import('./views/legal.js').then((m) => ({ default: (c) => m.default({ ...c, doc: 'privacidad' }) })) };
 
@@ -91,7 +92,8 @@ const NAV_GROUPS = [
   { label: 'nav.gPeople', items: [
     { id: 'crm', icon: 'users', key: 'nav.crm', href: () => '#/crm', on: (n) => n === 'crm' || n === 'clientes', tab: true },
     { id: 'calendario', icon: 'calendar', key: 'nav.calendar', href: () => '#/calendario', on: (n) => n === 'calendario' },
-    { id: 'chats', icon: 'chat', key: 'nav.chats', href: () => '#/chats', on: (n) => n === 'chats' }] },
+    { id: 'chats', icon: 'chat', key: 'nav.chats', href: () => '#/chats', on: (n) => n === 'chats' },
+    { id: 'enlace', icon: 'link', key: 'nav.link', href: () => '#/enlace', on: (n) => n === 'enlace' }] },
   { label: 'nav.gField', items: [
     { id: 'terrenos', icon: 'land', key: 'nav.land', href: () => '#/terrenos', on: (n) => n === 'terrenos' },
     { id: 'ganado', icon: 'cow', key: 'nav.cattle', href: () => '#/ganado', on: (n) => n === 'ganado' }] },
@@ -236,6 +238,10 @@ async function boot() {
   // Direcciones limpias para las páginas legales (/terminos, /privacidad): se muestran como rutas de la app.
   const legalPath = { '/terminos': '#/terminos', '/privacidad': '#/privacidad' }[location.pathname.replace(/\/+$/, '')];
   if (legalPath) history.replaceState(null, '', `/${legalPath}`);
+
+  // Enlace público de un negocio (/n/nombre): se abre el chat sin cuenta.
+  const pubLink = location.pathname.match(/^\/n\/([a-z0-9-]{3,40})\/?$/i);
+  if (pubLink) history.replaceState(null, '', `/#/n/${pubLink[1].toLowerCase()}`);
 
   let linkError = null;
   const url = new URL(location.href);

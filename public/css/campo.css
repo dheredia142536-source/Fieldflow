@@ -140,3 +140,29 @@
 
 .tr-out:empty, .tr-perha:empty { display: none; }
 button.d-att__it { width: 100%; text-align: left; }
+
+/* ── Enlace público: entrada y formulario dentro del chat ── */
+.enter { min-height: 100dvh; display: grid; place-content: center; justify-items: center; gap: 16px; padding: 24px; text-align: center; color: var(--text-2); }
+.enter h1 { color: var(--text); font-size: var(--fs-2xl); } .enter p { max-width: 36ch; }
+.idform { display: grid; gap: 12px; }
+.idform .input { background: var(--surface); }
+.idform__ok { align-items: flex-start; min-height: 0; margin: 0; font-size: var(--fs-sm); line-height: 1.4; }
+.idform__ok input { margin-top: 2px; flex: none; }
+
+/* ── Mi enlace ── */
+.lk-main { grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: center; }
+@media (min-width: 800px) { .lk-main { grid-template-columns: minmax(0, 1fr) auto; } }
+.lk-main__l { display: grid; gap: 14px; }
+.lk-url { padding: 14px 16px; border-radius: var(--r-md); background: var(--page); overflow-x: auto; }
+.lk-url code { font-size: var(--fs-md); font-weight: 500; letter-spacing: -0.01em; white-space: nowrap; }
+.lk-qr { display: grid; justify-items: center; gap: 12px; }
+.lk-qr svg { border: 1px solid var(--edge); border-radius: var(--r-md); }
+.lk-k3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .lk-k3 > :last-child { grid-column: 1 / -1; }
+@media (min-width: 700px) { .lk-k3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .lk-k3 > :last-child { grid-column: auto; } }
+.lk-steps { display: grid; gap: 18px; counter-reset: s; }
+.lk-step { display: flex; gap: 14px; align-items: flex-start; }
+.lk-step__n { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-strong); font-weight: 600; font-size: var(--fs-sm); }
+.lk-step strong { font-weight: 500; display: block; margin-bottom: 2px; } .lk-step p { color: var(--text-2); font-size: var(--fs-sm); line-height: 1.5; }
+.lk-wa { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; } .lk-wa:empty { display: none; }
+.lk-wa code { flex: 1 1 260px; min-width: 0; padding: 10px 12px; border-radius: var(--r-md); background: var(--page); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.lk-prev { margin-top: -8px; color: var(--text-2); font-size: var(--fs-sm); overflow-wrap: anywhere; } .lk-prev b { color: var(--text); font-weight: 600; }
