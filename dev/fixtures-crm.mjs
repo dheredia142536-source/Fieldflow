@@ -1,8 +1,8 @@
 // Datos de ejemplo del CRM, productos, caja y stock (sólo si el negocio aún no tiene nada de eso).
-import { query } from './db.mjs';
-import { nid } from './tenant.mjs';
-import { addDays, todayLocal } from './time.mjs';
-import { nowIso, uid } from './util.mjs';
+import { query } from '../lib/db.mjs';
+import { nid } from '../lib/tenant.mjs';
+import { addDays, todayLocal } from '../lib/time.mjs';
+import { nowIso, uid } from '../lib/util.mjs';
 
 export async function loadDemoCrm() {
   const N = nid();

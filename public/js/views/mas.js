@@ -1,4 +1,4 @@
-// "Más": accesos a ajustes y simulador, preferencias y cierre de sesión (móvil).
+// "Más": accesos a bandeja y ajustes, preferencias y cierre de sesión (móvil).
 import { post } from '../api.js';
 import { h, langSwitch } from '../ui.js';
 import { icon } from '../icons.js';
@@ -12,8 +12,7 @@ export default function mas({ main, go, rerender, toggleTheme }) {
     h('div', { class: 'pagehead' }, h('div', null, h('h1', null, t('nav.more')), h('p', null, state.staff?.correo || ''))),
     h('div', { class: 'list' },
       link('#/chats', 'chat', t('nav.chats'), t('mas.chatsSub')),
-      link('#/config', 'settings', t('nav.settings'), t('mas.settingsSub')),
-      link('#/simulador', 'phone', t('nav.simulator'), t('mas.simSub'))),
+      link('#/config', 'settings', t('nav.settings'), t('mas.settingsSub'))),
     h('section', { class: 'card card--surface stack' }, h('h2', { class: 'sectiontitle' }, t('mas.prefs')),
       h('div', { class: 'statusrow' }, h('span', null, t('common.language')), langSwitch(getLang(), (c) => { setLang(c); rerender(); })),
       h('div', { class: 'statusrow' }, h('span', null, t('common.theme')), h('button', { class: 'btn btn--secondary btn--sm', type: 'button', onclick: toggleTheme }, icon('moon', 16), t('common.toggleTheme'))),

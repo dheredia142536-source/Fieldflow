@@ -75,7 +75,7 @@ Webhook `https://tu-dominio.com/webhooks/whatsapp` (Vercel lo reescribe a `/api/
 Node ≥ 22.13. `npm run dev` → http://localhost:8888 (`admin@fieldflow.test` / `fieldflow-demo`, SQLite local). `npm test` → pruebas de backend, i18n y contraste.
 
 ### 6. Pendiente y límites
-- No probado todavía en Vercel real, con Neon real ni con Meta/Groq reales (solo con simulador y SQLite; el esquema SQL sí se validó en PostgreSQL 16).
+- No probado todavía en Vercel real, con Neon real ni con Meta/Groq reales (solo con pruebas automáticas y SQLite; el esquema SQL sí se validó en PostgreSQL 16).
 - Funciones en Hobby: máx. 60 s; el asistente corta a 22 s por mensaje.
 - Plan gratis de Groq: límites y sin SLA; si falla, el chat pasa a atención humana.
 - Pendiente: recordatorios (plantillas Meta / push), WhatsApp propio por negocio (credenciales de Meta por negocio), recuperar contraseña por correo, pagos, roles de usuario dentro de un negocio, bloqueo por intentos de login (hoy solo hay una pausa), límite de IA por negocio (hoy es compartido).

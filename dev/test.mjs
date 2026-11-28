@@ -35,6 +35,12 @@ let NID = null; // negocio del administrador (se conoce tras el primer login)
 const crearCita = (a) => withNegocio(NID, () => crearCita0(a));
 const slotsFor = (a) => withNegocio(NID, () => slotsFor0(a));
 const { query } = await import('../lib/db.mjs');
+const { handleInbound } = await import('../lib/inbound.mjs');
+const { loadDemoData } = await import('./fixtures.mjs');
+// Datos de prueba: solo existen en las pruebas, nunca en el producto.
+const seed = (nid) => withNegocio(nid, () => loadDemoData());
+// Simula el mensaje entrante de WhatsApp que genera el enlace seguro (llama a la misma lógica del webhook).
+const enlace = (nid, telefono, nombre) => withNegocio(nid, () => handleInbound({ phone: telefono, name: nombre, text: 'Hola', origin: 'https://app.example.com' }));
 const { addDays, todayLocal, weekdayOf } = await import('../lib/time.mjs');
 
 let pass = 0; let fail = 0;
@@ -76,9 +82,9 @@ const csrf = await api(new Request('https://app.example.com/api/auth/login', { m
 ok(csrf.status === 403, 'origen distinto → 403');
 
 section('2. Datos de ejemplo y disponibilidad');
-r = await staff.call('POST', '/api/staff/demo-data', {});
-ok(r.status === 200 && r.data.citas > 0, 'carga datos de ejemplo', JSON.stringify(r.data));
-r = await staff.call('POST', '/api/staff/demo-data', {});
+r = { data: await seed(NID) };
+ok(r.data.citas > 0, 'carga datos de prueba', JSON.stringify(r.data));
+r = { data: await seed(NID) };
 ok(r.data.skipped === true, 'cargar dos veces no duplica');
 const cat = (await staff.call('GET', '/api/staff/catalogo')).data;
 ok(cat.servicios.length === 5 && cat.recursos.length === 5, 'catálogo: 5 servicios y 5 recursos');
@@ -120,8 +126,8 @@ await post(raw, sign(raw));
 ok(Number(tokens) === 1, 'no reenvía el enlace dentro del periodo de espera');
 
 section('5. Del WhatsApp a la PWA (token → sesión)');
-r = await staff.call('POST', '/api/staff/simulador', { telefono: '573001234567', nombre: 'Ana', texto: 'Hola', forzar: true });
-ok(r.status === 200 && r.data.url.startsWith('https://app.example.com/?t='), 'el simulador genera el enlace seguro');
+r = { data: await enlace(NID, '573001234567', 'Ana') };
+ok(r.data.url.startsWith('https://app.example.com/?t='), 'el mensaje de WhatsApp genera el enlace seguro');
 const token = new URL(r.data.url).searchParams.get('t');
 const client = new Jar();
 r = await client.call('POST', '/api/auth/enter', { token: 'x'.repeat(30) });
@@ -157,7 +163,7 @@ ok(m.meta.ui?.type === 'confirm', 'cancelar pide confirmación');
 m = await say('Sí, cancelar', 'confirm');
 ok(m.meta.ui?.status === 'cancelada', 'confirma la cancelación');
 const other = new Jar();
-const sim2 = await staff.call('POST', '/api/staff/simulador', { telefono: '573007770000', nombre: 'Otro', texto: 'Hola', forzar: true });
+const sim2 = { data: await enlace(NID, '573007770000', 'Otro') };
 await other.call('POST', '/api/auth/enter', { token: new URL(sim2.data.url).searchParams.get('t') });
 r = await other.call('POST', `/api/client/citas/${citaId}/cancelar`, {});
 ok(r.status === 404, 'un cliente no puede tocar citas de otro');
@@ -181,9 +187,7 @@ section('8. Inglés');
 r = await client.call('POST', '/api/client/chat', { texto: 'Hello', idioma: 'en' });
 ok(/services|schedule/i.test(r.data.mensajes.at(-1).contenido), 'el bot responde en inglés');
 
-section('9. Probar bot y configuración');
-r = await staff.call('POST', '/api/staff/probar-bot', {});
-ok(r.data.ok, 'autoprueba de herramientas OK', JSON.stringify(r.data.pasos.filter((p) => !p.ok)));
+section('9. Configuración');
 r = await staff.call('PUT', '/api/staff/config', { negocio_nombre: 'Agro Prueba', instrucciones_bot: 'Atiende con cortesía.' });
 r = await staff.call('GET', '/api/staff/config');
 ok(r.data.config.negocio_nombre === 'Agro Prueba', 'guarda la configuración');
@@ -193,7 +197,7 @@ section('10. Modo IA (LLM compatible con OpenAI, simulado)');
 process.env.LLM_API_KEY = 'test-key';
 process.env.LLM_BASE_URL = `http://127.0.0.1:${llmPort}/v1`;
 const c2 = new Jar();
-const sim3 = await staff.call('POST', '/api/staff/simulador', { telefono: '573005550000', nombre: 'Luz', texto: 'Hola', forzar: true });
+const sim3 = { data: await enlace(NID, '573005550000', 'Luz') };
 await c2.call('POST', '/api/auth/enter', { token: new URL(sim3.data.url).searchParams.get('t') });
 await c2.call('GET', '/api/client/chat');
 const sv = (await staff.call('GET', '/api/staff/catalogo')).data.servicios.find((s) => s.nombre_es === 'Cosecha');
@@ -305,8 +309,9 @@ ok(r.data.conversaciones.length === 0, 'no ve las conversaciones de otro negocio
 const hoy = todayLocal();
 r = await maria.call('GET', `/api/staff/citas?desde=${hoy}&hasta=${addDays(hoy, 30)}`);
 ok(r.data.citas.length === 0, 'no ve las citas de otro negocio');
-r = await maria.call('POST', '/api/staff/demo-data', {});
-ok(r.status === 200 && r.data.skipped === false, 'puede cargar sus propios datos de ejemplo');
+const [{ negocio_id: MID }] = await query("select negocio_id from usuarios_negocio where correo = 'maria@cedros.co'");
+r = { data: await seed(MID) };
+ok(r.data.skipped === false, 'puede cargar sus propios datos de prueba');
 const mcat = (await maria.call('GET', '/api/staff/catalogo')).data;
 ok(mcat.servicios.length === 5 && mcat.servicios.every((x) => !cat.servicios.some((y) => y.id === x.id)), 'los datos de ejemplo de cada negocio son propios');
 const adminCli = (await staff.call('GET', '/api/staff/clientes')).data.clientes[0];
@@ -339,8 +344,8 @@ r = await staff.call('GET', '/api/staff/config');
 ok(r.data.config.negocio_nombre === 'Agro Prueba', 'la configuración de cada negocio es independiente');
 r = await maria.call('GET', '/api/staff/config');
 ok(r.data.sistema.principal === false && r.data.sistema.whatsapp.webhook === '' && r.data.config.negocio_nombre === 'Finca Los Cedros S.A.S.', 'un negocio normal no ve datos de la plataforma');
-r = await maria.call('POST', '/api/staff/simulador', { telefono: '573001234567', nombre: 'Ana', texto: 'Hola', forzar: true });
-ok(r.status === 200 && r.data.sent === false, 'el simulador del negocio nuevo funciona y no envía WhatsApp real');
+r = { data: await enlace(MID, '573001234567', 'Ana') };
+ok(r.data.sent === false, 'el negocio nuevo recibe su enlace y no envía WhatsApp real');
 const mClient = new Jar();
 await mClient.call('POST', '/api/auth/enter', { token: new URL(r.data.url).searchParams.get('t') });
 r = await mClient.call('GET', '/api/client/chat');

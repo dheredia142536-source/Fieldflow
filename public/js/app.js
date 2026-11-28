@@ -17,7 +17,6 @@ const STAFF = {
   clientes: () => import('./views/crm.js'),
   mas: () => import('./views/mas.js'),
   config: () => import('./views/config.js'),
-  simulador: () => import('./views/simulador.js'),
 };
 const PUBLIC = { '': () => import('./views/welcome.js'), negocio: () => import('./views/login.js'), registro: () => import('./views/registro.js'), recuperar: () => import('./views/recuperar.js'),
   terminos: () => import('./views/legal.js').then((m) => ({ default: (c) => m.default({ ...c, doc: 'terminos' }) })),
@@ -83,14 +82,13 @@ const NAV = [
   { id: 'chats', icon: 'chat', key: 'nav.chats', tab: false },
   { id: 'crm', icon: 'users', key: 'nav.crm', tab: true },
   { id: 'dia', icon: 'doc', key: 'nav.day', tab: true },
-  { id: 'simulador', icon: 'phone', key: 'nav.simulator', tab: false },
   { id: 'config', icon: 'settings', key: 'nav.settings', tab: false },
   { id: 'mas', icon: 'more', key: 'nav.more', tab: false, railHidden: true },
 ];
 
 function navLink(item, name, cls) {
   const badge = item.id === 'chats' && state.attention > 0 ? h('span', { class: 'count', 'aria-label': t('nav.pending', { n: state.attention }) }, String(state.attention)) : null;
-  const current = name === item.id || (item.id === 'crm' && name === 'clientes') || (item.id === 'mas' && ['config', 'simulador'].includes(name));
+  const current = name === item.id || (item.id === 'crm' && name === 'clientes') || (item.id === 'mas' && ['config'].includes(name));
   return h('a', { href: `#/${item.id}`, 'aria-current': current ? 'page' : null, class: cls, title: t(item.key) }, icon(item.icon, 22), h('span', { class: 'navlabel' }, t(item.key)), badge);
 }
 async function newCita() {
@@ -130,7 +128,7 @@ function buildShell(role, name) {
     h('div', { class: 'topbar__title' }, t(name === 'clientes' ? 'nav.crm' : NAV.find((n) => n.id === name)?.key || 'nav.today')),
     h('span', { class: 'only-sm topbar__act' },
       h('a', { class: 'btn btn--ghost btn--icon btn--sm tb', href: '#/chats', 'aria-label': t('nav.chats'), 'aria-current': name === 'chats' ? 'page' : null }, icon('chat', 20), state.attention > 0 ? h('span', { class: 'count', 'aria-label': t('nav.pending', { n: state.attention }) }, String(state.attention)) : null),
-      h('a', { class: 'btn btn--ghost btn--icon btn--sm tb', href: '#/mas', 'aria-label': t('nav.more'), 'aria-current': ['mas', 'config', 'simulador'].includes(name) ? 'page' : null }, icon('menu', 20))));
+      h('a', { class: 'btn btn--ghost btn--icon btn--sm tb', href: '#/mas', 'aria-label': t('nav.more'), 'aria-current': ['mas', 'config'].includes(name) ? 'page' : null }, icon('menu', 20))));
   const tabs = NAV.filter((n) => n.tab).map((n) => navLink(n, name));
   const bar = h('nav', { class: 'tabbar tabbar--fab', 'aria-label': t('nav.main') }, tabs.slice(0, 2), fab(), tabs.slice(2));
   const main = h('main', { class: 'main', id: 'main', tabindex: '-1' });

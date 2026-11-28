@@ -19,21 +19,6 @@ export default async function config({ main, isCurrent, rerender }) {
   const copy = (txt) => h('button', { class: 'btn btn--ghost btn--sm', type: 'button', onclick: async () => { try { await navigator.clipboard.writeText(txt); toast(t('cfg.copied')); } catch { toast(txt); } } }, icon('copy', 16), t('cfg.copy'));
 
   // ── Estado ──
-  const tests = h('ul', { class: 'testlist', 'aria-live': 'polite' });
-  const testBtn = h('button', { class: 'btn btn--secondary btn--sm', type: 'button' }, icon('check', 16), t('cfg.test'));
-  testBtn.addEventListener('click', () => busy(testBtn, async () => {
-    clear(tests);
-    try {
-      const r = await post('/api/staff/probar-bot', {});
-      r.pasos.forEach((p) => tests.append(h('li', null, icon(p.ok ? 'check' : 'x', 18, p.ok ? 'ok' : 'bad'), h('span', null, h('b', null, p.nombre), p.detalle ? ` — ${p.detalle}` : ''))));
-      toast(t(r.ok ? 'cfg.testOk' : 'cfg.testFail'), !r.ok);
-    } catch (e) { toast(e.message, true); }
-  }));
-  const demoBtn = h('button', { class: 'btn btn--secondary btn--sm', type: 'button' }, icon('leaf', 16), t('cfg.demo'));
-  demoBtn.addEventListener('click', async () => {
-    if (!(await confirmDialog({ title: t('cfg.demoTitle'), text: t('cfg.demoText'), okLabel: t('cfg.demoYes') }))) return;
-    busy(demoBtn, async () => { try { await post('/api/staff/demo-data', {}); toast(t('cfg.demoDone')); rerender(); } catch (e) { toast(e.message, true); } });
-  });
   const wa = sistema.whatsapp;
   const status = h('section', { class: 'card card--surface', 'aria-labelledby': 's1' }, h('h2', { class: 'sectiontitle', id: 's1' }, t('cfg.status')),
     row(t('cfg.llm'), sistema.llm.activo ? h('span', { class: 'badge badge--ok' }, `${sistema.llm.modelo} · ${sistema.llm.host}`) : h('span', { class: 'badge badge--info' }, t('cfg.demoMode'))),
@@ -43,7 +28,7 @@ export default async function config({ main, isCurrent, rerender }) {
       row(t('cfg.session'), dot(sistema.sesion_ok)),
       row(t('cfg.webhook'), h('code', null, wa.webhook), copy(wa.webhook)),
     ] : h('p', { class: 'hint' }, t('cfg.waSoon')),
-    h('div', { class: 'row mt' }, testBtn, demoBtn), tests);
+);
 
   // ── Negocio ──
   const f = {

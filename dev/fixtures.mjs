@@ -1,11 +1,11 @@
 // Datos de ejemplo del sector agro. / Agro demo data.
-import { query } from './db.mjs';
-import { slotsFor } from './availability.mjs';
-import { crearCita } from './citas.mjs';
-import { getConversation, saveMessage, setHandling, upsertCliente } from './convos.mjs';
-import { addDays, localToUtc, todayLocal, weekdayOf } from './time.mjs';
-import { nowIso, uid } from './util.mjs';
-import { nid } from './tenant.mjs';
+import { query } from '../lib/db.mjs';
+import { slotsFor } from '../lib/availability.mjs';
+import { crearCita } from '../lib/citas.mjs';
+import { getConversation, saveMessage, setHandling, upsertCliente } from '../lib/convos.mjs';
+import { addDays, localToUtc, todayLocal, weekdayOf } from '../lib/time.mjs';
+import { nowIso, uid } from '../lib/util.mjs';
+import { nid } from '../lib/tenant.mjs';
 
 export async function loadDemoData() {
   const N = nid();
