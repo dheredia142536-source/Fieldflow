@@ -1,5 +1,16 @@
 // Íconos de línea (24×24, trazo 1.7). Contenido estático propio; no hay datos de usuarios aquí.
 const P = {
+  land: '<path d="M2.5 19 9 7l4.5 7 2.5-3.5L21.5 19z"/><path d="M2.5 19h19"/>',
+  cow: '<path d="M6.5 8.5C4.2 8.5 3 7 3 5.2 5.2 5.2 6.6 6 7.4 7.3M17.5 8.5C19.8 8.5 21 7 21 5.2c-2.2 0-3.6.8-4.4 2.1"/><path d="M7.4 7.3C8.7 6.6 10.3 6.3 12 6.3s3.3.3 4.6 1L18 9v4.5c0 3.4-2.6 6-6 6s-6-2.6-6-6V9z"/><path d="M9.3 11.6v.01M14.7 11.6v.01M9.8 16.2h4.4"/>',
+  drop: '<path d="M12 3.5s6 6.2 6 10.5a6 6 0 0 1-12 0c0-4.3 6-10.5 6-10.5z"/>',
+  syringe: '<path d="m17 3 4 4M15 5l4 4M13 7l4 4M5.5 15.5 14 7l3 3-8.5 8.5-4 .5z"/><path d="m3.5 20.5 3-3"/>',
+  gauge: '<path d="M4 17a8 8 0 1 1 16 0"/><path d="m12 17 3.8-5"/>',
+  camera: '<path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13.5" r="3.5"/>',
+  heart: '<path d="M12 20s-7.5-4.5-7.5-10a4.2 4.2 0 0 1 7.5-2.6A4.2 4.2 0 0 1 19.5 10c0 5.5-7.5 10-7.5 10z"/>',
+  share: '<path d="M12 15V4M8 8l4-4 4 4"/><path d="M5 13v6.5h14V13"/>',
+  trash: '<path d="M5 7h14M9.5 7V4.5h5V7M7 7l.8 12.5h8.4L17 7"/>',
+  star: '<path d="m12 3.8 2.5 5.2 5.7.8-4.1 4 1 5.7L12 16.8 6.9 19.5l1-5.7-4.1-4 5.7-.8z"/>',
+  map: '<path d="M9 5 3.5 7v12L9 17l6 2 5.5-2V5L15 7z"/><path d="M9 5v12M15 7v12"/>',
   trendUp: '<path d="M3.5 16.5 9.5 10.5l4 4 7-7"/><path d="M15 7.5h5.5V13"/>',
   trendDown: '<path d="M3.5 7.5 9.5 13.5l4-4 7 7"/><path d="M15 16.5h5.5V11"/>',
   filter: '<path d="M4 6h16M7 12h10M10 18h4"/>',

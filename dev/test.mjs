@@ -537,6 +537,119 @@ section('15. Recuperar contraseña (Brevo) e ingreso con Google');
   ok((await staff.call('GET', '/api/staff/catalogo')).data.servicios.find((x) => x.id === visita.id).precio === 80000, 'servicios con precio');
 }
 
+section('18. Terrenos (compra y venta)');
+{
+  const tiny = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACv/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==';
+  r = await staff.call('POST', '/api/staff/terrenos', { titulo: '' });
+  ok(r.status === 400, 'terreno: exige título');
+  r = await staff.call('POST', '/api/staff/terrenos', { titulo: 'Lote El Mirador', operacion: 'venta', uso: 'ganadero', departamento: 'Meta', municipio: 'Villavicencio', area_ha: 12.5, precio: 2500000000, caracteristicas: ['agua', 'luz', 'inventado'], documentos: ['escritura'], lat: 4.14, lng: -73.62 });
+  ok(r.status === 200 && r.data.id, 'terreno: crea una ficha (precio de miles de millones)');
+  const t1 = r.data.id;
+  r = await staff.call('POST', '/api/staff/terrenos', { titulo: 'Finca vecina', operacion: 'venta', municipio: 'Villavicencio', area_ha: 10, precio: 1500000000 });
+  r = await staff.call('POST', '/api/staff/terrenos', { titulo: 'Mala', area_ha: 1, precio: 1, lat: 200 });
+  ok(r.status === 400, 'terreno: rechaza coordenadas fuera de rango');
+  r = await staff.call('GET', `/api/staff/terrenos/${t1}`);
+  ok(r.data.terreno.precio === 2500000000 && r.data.terreno.precio_ha === 200000000, 'terreno: precio por hectárea calculado');
+  ok(r.data.terreno.caracteristicas.length === 2 && !r.data.terreno.caracteristicas.includes('inventado'), 'terreno: solo guarda características conocidas');
+  ok(r.data.referencia && r.data.referencia.n === 1 && r.data.referencia.promedio_ha === 150000000, 'terreno: referencia de precio por hectárea de la zona');
+  r = await staff.call('POST', `/api/staff/terrenos/${t1}/fotos`, { grande: tiny, mini: tiny });
+  ok(r.status === 200, 'terreno: sube una foto');
+  const f1 = r.data.id;
+  r = await staff.call('POST', `/api/staff/terrenos/${t1}/fotos`, { grande: 'data:text/html;base64,AAAA', mini: tiny });
+  ok(r.status === 400, 'terreno: rechaza archivos que no son imagen');
+  await staff.call('POST', `/api/staff/terrenos/${t1}/fotos`, { grande: tiny, mini: tiny });
+  r = await staff.call('GET', '/api/staff/terrenos');
+  ok(r.data.terrenos.find((x) => x.id === t1).fotos === 2 && !!r.data.terrenos.find((x) => x.id === t1).portada, 'terreno: la lista trae portada y número de fotos');
+  r = await staff.call('POST', `/api/staff/terrenos/${t1}/interesados`, { nombre: 'Pedro Gómez', telefono: '3001234567', oferta: 2300000000 });
+  ok(r.status === 200, 'terreno: registra un interesado con su oferta');
+  const i1 = r.data.id;
+  r = await staff.call('PATCH', `/api/staff/terreno-interesados/${i1}`, { estado: 'visita' });
+  ok(r.status === 200 && (await staff.call('GET', `/api/staff/terrenos/${t1}`)).data.interesados[0].estado === 'visita', 'terreno: cambia el estado del interesado');
+  r = await maria.call('GET', `/api/staff/terrenos/${t1}`);
+  ok(r.status === 404, 'terreno: otro negocio no lo ve');
+  r = await maria.call('DELETE', `/api/staff/terreno-fotos/${f1}`);
+  ok(r.status === 404, 'terreno: otro negocio no borra sus fotos');
+  r = await staff.call('POST', '/api/staff/terrenos', { id: t1, titulo: 'Lote El Mirador', estado: 'negociacion', area_ha: 12.5, precio: 2400000000 });
+  ok((await staff.call('GET', `/api/staff/terrenos/${t1}`)).data.terreno.estado === 'negociacion', 'terreno: edita el estado y el precio');
+  r = await staff.call('DELETE', `/api/staff/terrenos/${t1}`);
+  ok(r.status === 200 && (await staff.call('GET', `/api/staff/terrenos/${t1}`)).status === 404, 'terreno: se elimina con sus fotos e interesados');
+}
+
+section('19. Ganado');
+{
+  const hoyG = todayLocal(); const hace = (n) => addDays(hoyG, -n);
+  r = await staff.call('POST', '/api/staff/ganado/animales', { sexo: 'hembra' });
+  ok(r.status === 400, 'ganado: exige arete o nombre');
+  r = await staff.call('POST', '/api/staff/ganado/animales', { arete: 'A-001', nombre: 'Luna', sexo: 'hembra', raza: 'Holstein', nacimiento: hace(1000), lote: 'Lecheras', peso: 450 });
+  ok(r.status === 200, 'ganado: registra un animal');
+  const vaca = r.data.id;
+  r = await staff.call('POST', '/api/staff/ganado/animales', { arete: 'a-001', sexo: 'macho' });
+  ok(r.status === 400 && r.data.error === 'duplicate_tag', 'ganado: no repite el arete');
+  r = await staff.call('POST', '/api/staff/ganado/animales', { arete: 'A-002', sexo: 'hembra', nacimiento: hace(1200), lote: 'Lecheras' });
+  const vaca2 = r.data.id;
+  r = await staff.call('POST', '/api/staff/ganado/animales', { arete: 'T-010', sexo: 'macho', nacimiento: hace(200), lote: 'Levante' });
+  const ternero = r.data.id;
+  let g = (await staff.call('GET', '/api/staff/ganado')).data;
+  ok(g.resumen.activos === 3 && g.animales.find((a) => a.id === vaca).categoria === 'vaca' && g.animales.find((a) => a.id === ternero).categoria === 'ternero', 'ganado: la categoría se sugiere por sexo y edad');
+  // Pesajes y ganancia diaria
+  await staff.call('POST', '/api/staff/ganado/eventos', { animal_id: ternero, tipo: 'peso', fecha: hace(30), valor: 150 });
+  await staff.call('POST', '/api/staff/ganado/eventos', { animal_id: ternero, tipo: 'peso', fecha: hace(0), valor: 180 });
+  g = (await staff.call('GET', '/api/staff/ganado')).data;
+  const tj = g.animales.find((a) => a.id === ternero);
+  ok(tj.peso === 180 && tj.gdp === 1, 'ganado: peso actual y ganancia diaria (1 kg/día)');
+  r = await staff.call('POST', '/api/staff/ganado/eventos', { animal_id: ternero, tipo: 'peso', fecha: hace(0), valor: -5 });
+  ok(r.status === 400, 'ganado: rechaza pesos inválidos');
+  r = await staff.call('POST', '/api/staff/ganado/eventos', { animal_id: ternero, tipo: 'peso', fecha: addDays(hoyG, 3), valor: 190 });
+  ok(r.status === 400, 'ganado: no registra fechas futuras');
+  // Reproducción
+  r = await staff.call('POST', '/api/staff/ganado/eventos', { animal_id: ternero, tipo: 'monta', fecha: hace(1) });
+  ok(r.status === 400, 'ganado: la monta solo va en hembras');
+  r = await staff.call('POST', '/api/staff/ganado/eventos', { animal_id: vaca, tipo: 'monta', fecha: hace(50), toro: 'Brahman 7' });
+  ok(r.status === 200 && r.data.parto_probable === addDays(hace(50), 283), 'ganado: la monta calcula el parto probable (283 días)');
+  g = (await staff.call('GET', '/api/staff/ganado')).data;
+  ok(g.alertas.sin_diagnostico.some((x) => x.id === vaca), 'ganado: avisa que falta el diagnóstico de preñez');
+  await staff.call('POST', '/api/staff/ganado/eventos', { animal_id: vaca, tipo: 'diagnostico', fecha: hace(10), prenada: true });
+  g = (await staff.call('GET', '/api/staff/ganado')).data;
+  ok(g.resumen.prenadas === 1 && g.animales.find((a) => a.id === vaca).repro === 'prenada', 'ganado: marca la vaca como preñada');
+  // Sanidad masiva por lote y avisos
+  r = await staff.call('POST', '/api/staff/ganado/lote', { lote: 'Lecheras', tipo: 'vacuna', producto: 'Aftosa', fecha: hace(180), proxima_fecha: hace(2) });
+  ok(r.status === 200 && r.data.n === 2, 'ganado: vacuna a todo un lote con un solo registro');
+  g = (await staff.call('GET', '/api/staff/ganado')).data;
+  ok(g.alertas.sanidad.length === 1 && g.alertas.sanidad[0].n === 2 && g.alertas.sanidad[0].dias < 0, 'ganado: avisa vacunas vencidas, agrupadas por producto');
+  await staff.call('POST', '/api/staff/ganado/eventos', { animal_id: vaca, tipo: 'vacuna', producto: 'Aftosa', fecha: hace(0) });
+  g = (await staff.call('GET', '/api/staff/ganado')).data;
+  ok(g.alertas.sanidad[0].n === 1, 'ganado: al repetir la vacuna deja de estar pendiente');
+  r = await staff.call('POST', '/api/staff/ganado/lote', { lote: 'No existe', tipo: 'vacuna', producto: 'X' });
+  ok(r.status === 400, 'ganado: un lote vacío no registra nada');
+  // Leche
+  await staff.call('POST', '/api/staff/ganado/eventos', { tipo: 'leche', fecha: hoyG, valor: 120 });
+  await staff.call('POST', '/api/staff/ganado/eventos', { tipo: 'leche', fecha: hoyG, valor: 135 });
+  g = (await staff.call('GET', '/api/staff/ganado')).data;
+  ok(g.resumen.leche_hoy === 135 && g.leche.length === 14, 'ganado: la leche del día se reemplaza, no se duplica');
+  // Parto con cría
+  r = await staff.call('POST', '/api/staff/ganado/eventos', { animal_id: vaca, tipo: 'parto', fecha: hace(0), cria: { arete: 'T-011', sexo: 'hembra', peso: 35 } });
+  ok(r.status === 200 && r.data.cria_id, 'ganado: el parto registra a la cría');
+  let d = (await staff.call('GET', `/api/staff/ganado/animales/${vaca}`)).data;
+  ok(d.repro.estado === 'parida' && d.crias.length === 1 && d.crias[0].arete === 'T-011', 'ganado: la ficha de la madre muestra su cría');
+  // Venta con caja
+  r = await staff.call('POST', '/api/staff/ganado/eventos', { animal_id: ternero, tipo: 'venta', fecha: hoyG, valor: 1800000, comprador: 'Frigorífico', caja: true });
+  ok(r.status === 200 && r.data.caja === true, 'ganado: la venta se anota también en la caja del día');
+  d = (await staff.call('GET', `/api/staff/dia/${hoyG}`)).data;
+  ok(d.movimientos.some((m) => m.monto === 1800000 && /T-010/.test(m.concepto)), 'ganado: el ingreso aparece en Ventas y dinero');
+  g = (await staff.call('GET', '/api/staff/ganado')).data;
+  ok(g.animales.find((a) => a.id === ternero).estado === 'vendido' && g.resumen.vendidos === 1, 'ganado: el animal vendido sale del hato activo');
+  r = await staff.call('POST', '/api/staff/ganado/eventos', { animal_id: ternero, tipo: 'venta', fecha: hoyG, valor: 1 });
+  ok(r.status === 400, 'ganado: no se vende dos veces');
+  // Aislamiento entre negocios
+  r = await maria.call('GET', `/api/staff/ganado/animales/${vaca}`);
+  ok(r.status === 404, 'ganado: otro negocio no ve tus animales');
+  r = await maria.call('POST', '/api/staff/ganado/eventos', { animal_id: vaca, tipo: 'peso', fecha: hoyG, valor: 400 });
+  ok(r.status === 404, 'ganado: otro negocio no registra eventos en tus animales');
+  ok((await maria.call('GET', '/api/staff/ganado')).data.animales.length === 0, 'ganado: cada negocio solo ve su hato');
+  r = await staff.call('GET', '/api/staff/ganado/alertas');
+  ok(r.status === 200 && typeof r.data.activos === 'number', 'ganado: resumen de avisos para el Inicio');
+}
+
 console.log(`\n${pass} correctas, ${fail} con error`);
 llm.close();
 process.exit(fail ? 1 : 0);

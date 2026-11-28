@@ -1,5 +1,6 @@
 // Diccionario de textos. Cada clave existe en es y en en (lo verifica `npm test`).
 import * as panel from './dict-panel.js';
+import * as campo from './dict-campo.js';
 
 export const dict = {
   es: {
@@ -222,5 +223,5 @@ export const dict = {
   },
 };
 
-Object.assign(dict.es, panel.es);
-Object.assign(dict.en, panel.en);
+Object.assign(dict.es, panel.es, campo.es);
+Object.assign(dict.en, panel.en, campo.en);

@@ -174,6 +174,9 @@ function attentionCard(data) {
   if (low.length) items.push({ ic: 'alert', tone: 'warn', text: t('pn.attLow', { n: low.length }), sub: low.slice(0, 3).map((p) => p.nombre).join(', '), href: '#/dia/' + hoy + '/productos' });
   const ayer = addDays(hoy, -1);
   const had = (data.fin?.dias || []).some((x) => x[0] === ayer);
+  const g = data.ganado;
+  if (g && g.vencidas) items.push({ ic: 'alert', tone: 'warn', text: t('pn.attCattleVac', { n: g.vencidas }), href: '#/ganado/salud' });
+  if (g && g.partos) items.push({ ic: 'heart', tone: 'info', text: t('pn.attCalving', { n: g.partos }), href: '#/ganado/repro' });
   if (had && !(data.fin?.cierres || []).some((c) => c.dia === ayer && c.cerrado)) items.push({ ic: 'clock', tone: 'info', text: t('pn.attYesterday'), href: `#/dia/${ayer}/cierre` });
   return card(t('pn.attention'), { cls: 'd-att' },
     items.length ? h('ul', { class: 'd-attlist' }, items.map((x) => h('li', null, h('a', { class: `d-att__it is-${x.tone}`, href: x.href },
@@ -284,13 +287,13 @@ export default function hoy({ main, go, isCurrent }) {
 
   async function load() {
     const hoyYmd = todayLocal();
-    const [dash, crm, fin, dia] = await Promise.all([
+    const [dash, crm, fin, dia, ganado] = await Promise.all([
       get('/api/staff/dashboard').catch(() => null), get('/api/staff/crm').catch(() => null),
-      get('/api/staff/finanzas').catch(() => null), get(`/api/staff/dia/${hoyYmd}`).catch(() => null),
+      get('/api/staff/finanzas').catch(() => null), get(`/api/staff/dia/${hoyYmd}`).catch(() => null), get('/api/staff/ganado/alertas').catch(() => null),
     ]);
     if (!isCurrent()) return;
     if (!dash && !crm && !fin && !data) { clear(root); root.append(h('div', { class: 'empty' }, h('h3', null, t('err.generic')), h('button', { class: 'btn btn--primary', type: 'button', onclick: load }, t('common.retry')))); return; }
-    const next = { hoy: fin?.hoy || dash?.hoy || hoyYmd, dash: dash || data?.dash, crm: crm || data?.crm, fin: fin || data?.fin, dia: dia || data?.dia };
+    const next = { hoy: fin?.hoy || dash?.hoy || hoyYmd, dash: dash || data?.dash, crm: crm || data?.crm, fin: fin || data?.fin, dia: dia || data?.dia, ganado: ganado || data?.ganado };
     if (!next.dash) return;
     const sig = JSON.stringify(next);
     if (sig === last) return;

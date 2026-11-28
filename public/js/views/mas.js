@@ -13,6 +13,8 @@ export default function mas({ main, go, rerender, toggleTheme }) {
     h('div', { class: 'pagehead' }, h('div', null, h('h1', null, t('nav.more')), h('p', null, state.staff?.correo || ''))),
     h('div', { class: 'list' },
       link('#/calendario', 'calendar', t('nav.calendar'), t('mas.calSub')),
+      link('#/terrenos', 'land', t('nav.land'), t('mas.landSub')),
+      link('#/ganado', 'cow', t('nav.cattle'), t('mas.cattleSub')),
       link('#/chats', 'chat', t('nav.chats'), t('mas.chatsSub')),
       link(`#/dia/${todayLocal()}/cierre`, 'check', t('nav.closing'), t('mas.closeSub')),
       link('#/config', 'settings', t('nav.settings'), t('mas.settingsSub'))),

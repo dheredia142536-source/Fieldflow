@@ -16,6 +16,8 @@ const STAFF = {
   crm: () => import('./views/crm.js'),
   dia: () => import('./views/dia.js'),
   clientes: () => import('./views/crm.js'),
+  terrenos: () => import('./views/terrenos.js'),
+  ganado: () => import('./views/ganado.js'),
   mas: () => import('./views/mas.js'),
   config: () => import('./views/config.js'),
 };
@@ -41,7 +43,7 @@ function startStaff() {
 
 // Precarga (sin bloquear) las pantallas del negocio mientras la persona está en el inicio o el login.
 function warmStaff() {
-  const run = () => ['./views/hoy.js', './views/calendario.js', './views/crm.js', './views/dia.js', './views/chats.js'].forEach((m) => import(m).catch(() => {}));
+  const run = () => ['./views/hoy.js', './views/calendario.js', './views/crm.js', './views/dia.js', './views/chats.js', './views/terrenos.js', './views/ganado.js'].forEach((m) => import(m).catch(() => {}));
   (window.requestIdleCallback || ((f) => setTimeout(f, 800)))(run);
 }
 
@@ -90,6 +92,9 @@ const NAV_GROUPS = [
     { id: 'crm', icon: 'users', key: 'nav.crm', href: () => '#/crm', on: (n) => n === 'crm' || n === 'clientes', tab: true },
     { id: 'calendario', icon: 'calendar', key: 'nav.calendar', href: () => '#/calendario', on: (n) => n === 'calendario' },
     { id: 'chats', icon: 'chat', key: 'nav.chats', href: () => '#/chats', on: (n) => n === 'chats' }] },
+  { label: 'nav.gField', items: [
+    { id: 'terrenos', icon: 'land', key: 'nav.land', href: () => '#/terrenos', on: (n) => n === 'terrenos' },
+    { id: 'ganado', icon: 'cow', key: 'nav.cattle', href: () => '#/ganado', on: (n) => n === 'ganado' }] },
 ];
 const NAV_SETTINGS = { id: 'config', icon: 'settings', key: 'nav.settings', href: () => '#/config', on: (n) => n === 'config' };
 const ALL_ITEMS = [...NAV_GROUPS.flatMap((g) => g.items), NAV_SETTINGS];
@@ -117,7 +122,9 @@ async function openRegister() {
     opt('leaf', t('rg.stock'), t('rg.stockSub'), () => go(`#/dia/${d}/productos`)),
     opt('plus', t('rg.product'), t('rg.productSub'), () => go(`#/dia/${d}/productos/nuevo`)),
     opt('users', t('rg.client'), t('rg.clientSub'), () => go('#/crm/nuevo')),
-    opt('calendar', t('rg.cita'), t('rg.citaSub'), newCita)) });
+    opt('calendar', t('rg.cita'), t('rg.citaSub'), newCita),
+    opt('cow', t('rg.animal'), t('rg.animalSub'), () => go('#/ganado/nuevo')),
+    opt('land', t('rg.land'), t('rg.landSub'), () => go('#/terrenos/nuevo'))) });
 }
 const fab = () => h('button', { class: 'fab', type: 'button', 'aria-label': t('rg.title'), onclick: openRegister }, icon('plus', 26));
 
