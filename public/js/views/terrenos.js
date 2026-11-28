@@ -20,7 +20,9 @@ const place = (x) => [x.vereda, x.municipio, x.departamento].filter(Boolean).joi
 const waLink = (tel, text) => `https://wa.me/${String(tel || '').replace(/\D/g, '')}${text ? `?text=${encodeURIComponent(text)}` : ''}`;
 const mapLink = (x) => `https://www.google.com/maps?q=${x.lat},${x.lng}`;
 const dirLink = (x) => `https://www.google.com/maps/dir/?api=1&destination=${x.lat},${x.lng}`;
-const mapImg = (lat, lng, w, hgt) => `/api/staff/geo/mapa?lat=${lat}&lng=${lng}&w=${w}&h=${hgt}&z=14`;
+// Zoom según el tamaño: una finca grande necesita ver más alrededor que un lote.
+const zoomFor = (ha) => (ha >= 500 ? 12 : ha >= 100 ? 13 : ha >= 20 ? 14 : ha > 0 ? 15 : 14);
+const mapImg = (lat, lng, w, hgt, ha = 0) => `/api/staff/geo/mapa?lat=${lat}&lng=${lng}&w=${w}&h=${hgt}&z=${zoomFor(ha)}`;
 // ¿Está activado el mapa de Geoapify en este sitio? (se pregunta una vez)
 let geoOn = null;
 const geoEstado = () => (geoOn !== null ? Promise.resolve(geoOn) : get('/api/staff/geo/estado').then((r) => (geoOn = !!r.activo)).catch(() => (geoOn = false)));
@@ -73,7 +75,7 @@ function formSheet(x, done) {
     clear(mapPrev); const la = Number(f.lat.value); const ln = Number(f.lng.value);
     if (!geoOn || f.lat.value === '' || f.lng.value === '' || !Number.isFinite(la) || !Number.isFinite(ln) || Math.abs(la) > 90 || Math.abs(ln) > 180) { mapPrev.hidden = true; return; }
     mapPrev.hidden = false;
-    const im = h('img', { src: mapImg(la, ln, 640, 280), alt: t('ter.mapPreview') }); im.onerror = () => { mapPrev.hidden = true; };
+    const im = h('img', { src: mapImg(la, ln, 640, 280, Number(f.area.value) || 0), alt: t('ter.mapPreview') }); im.onerror = () => { mapPrev.hidden = true; };
     mapPrev.append(im, h('small', null, t('ter.mapPreview')));
   };
   const fillPlace = (p) => {
@@ -244,7 +246,7 @@ function detalle({ main, go, id, isCurrent }) {
 
   function ubicacion() {
     const x = D.terreno; const has = x.lat != null && x.lng != null;
-    const img = has ? h('img', { src: mapImg(x.lat, x.lng, 900, 480), alt: `${t('ter.mapTitle')}: ${place(x) || x.titulo}`, loading: 'lazy' }) : null;
+    const img = has ? h('img', { src: mapImg(x.lat, x.lng, 900, 480, x.area_ha), alt: `${t('ter.mapTitle')}: ${place(x) || x.titulo}`, loading: 'lazy' }) : null;
     const frame = has ? h('a', { class: 'tr-map', href: mapLink(x), target: '_blank', rel: 'noopener noreferrer', 'aria-label': t('ter.openMap') }, img) : null;
     if (img) img.onerror = () => { frame.hidden = true; };
     return h('section', { class: 'd-card' }, h('header', { class: 'd-card__head' }, h('div', null, h('h2', { class: 'd-card__title' }, t('ter.mapTitle')), h('p', { class: 'd-card__sub' }, [place(x), x.direccion].filter(Boolean).join(' · ') || t('ter.noPlace')))),

@@ -765,6 +765,70 @@ section('21. Mapa con Geoapify (la clave nunca sale del servidor)');
   delete process.env.GEOAPIFY_API_KEY; geo.close();
 }
 
+section('22. Recordatorios de cita por correo');
+{
+  const sent = [];
+  const brevo = http.createServer(async (req, res) => { const ch = []; for await (const c of req) ch.push(c); sent.push({ key: req.headers['api-key'], ...JSON.parse(Buffer.concat(ch).toString() || '{}') }); res.setHeader('content-type', 'application/json'); res.end('{"messageId":"m1"}'); }).listen(0);
+  process.env.BREVO_API_BASE = `http://127.0.0.1:${brevo.address().port}`; process.env.BREVO_API_KEY = 'brevo-prueba'; process.env.MAIL_FROM = 'FieldFlow <no-reply@fieldflow.test>';
+  delete process.env.CRON_SECRET;
+  const hoyR = todayLocal();
+  r = await staff.call('GET', '/api/staff/recordatorios');
+  ok(r.status === 200 && r.data.activo === true && r.data.correo_ok === true && r.data.cron_ok === false, 'recordatorios: el panel indica si el correo y la corrida diaria están listos');
+  const catR = (await staff.call('GET', '/api/staff/catalogo')).data; const svcR = catR.servicios[0];
+  let diaR = null; let slotsR = [];
+  for (let i = 2; i <= 12 && !slotsR.length; i++) { const f = addDays(hoyR, i); const x = (await staff.call('GET', `/api/staff/disponibilidad?servicio_id=${svcR.id}&fecha=${f}`)).data.slots; const uniq = [...new Map(x.map((s) => [s.inicio, s])).values()]; if (x.length >= 12) { diaR = f; slotsR = x; } }
+  ok(diaR && slotsR.length >= 12, 'recordatorios: hay un día con cupos para probar');
+  let ptr = 0;
+  const book = async (_i, cli) => { let x = null; while (ptr < slotsR.length) { const sl = slotsR[ptr++]; x = await staff.call('POST', '/api/staff/citas', { cliente: cli, servicio_id: svcR.id, inicio: sl.inicio, recurso_id: sl.recurso_id }); if (x.status !== 409) break; } return x; };
+  r = await book(0, { telefono: '573008880001', nombre: 'Ana Gómez', correo: 'ana@test.co' });
+  ok(r.status === 200, 'recordatorios: la cita manual acepta el correo del cliente');
+  const citaA = r.data.cita?.id || r.data.id;
+  r = await book(1, { telefono: '573008880002', nombre: 'Beto Sin Correo' });
+  r = await book(2, { telefono: '573008880003', nombre: 'Carla Ficha' });
+  r = await staff.call('POST', '/api/staff/citas', { cliente: { telefono: '573008880004', nombre: 'Dani Correo Malo', correo: 'no-es-correo' }, servicio_id: svcR.id, inicio: slotsR[0].inicio, recurso_id: slotsR[0].recurso_id });
+  ok(r.status === 400 && r.data.error === 'invalid_email', 'recordatorios: rechaza un correo inválido');
+  const crmR = (await staff.call('GET', '/api/staff/crm')).data.contactos.find((c) => c.nombre === 'Carla Ficha');
+  await staff.call('PATCH', `/api/staff/contactos/${crmR.id}`, { correo: 'carla@test.co' });
+  r = await staff.call('POST', '/api/staff/recordatorios/enviar', { dia: diaR });
+  ok(r.status === 200 && r.data.enviados === 2 && r.data.sin_correo >= 1 && r.data.errores === 0, 'recordatorios: envía a quien tiene correo (propio o de su ficha) y cuenta a quien no');
+  ok(sent.length === 2 && sent.every((m) => m.key === 'brevo-prueba') && sent.map((m) => m.to[0].email).sort().join() === 'ana@test.co,carla@test.co', 'recordatorios: cada correo va a su destinatario con la clave de Brevo');
+  const m1 = sent.find((m) => m.to[0].email === 'ana@test.co');
+  ok(m1.subject.includes(svcR.nombre_es) && m1.sender.name && m1.htmlContent.includes('Ana') && /a\. m\.|p\. m\./.test(m1.textContent), 'recordatorios: el asunto trae el servicio y el texto la hora');
+  const tok = (m1.textContent.match(/\?t=([\w-]+)/) || [])[1];
+  ok(tok && (await new Jar().call('POST', '/api/auth/enter', { token: tok })).status === 200, 'recordatorios: el botón lleva a «Mis citas» sin crear cuenta');
+  r = await staff.call('POST', '/api/staff/recordatorios/enviar', { dia: diaR });
+  ok(r.data.enviados === 0 && sent.length === 2, 'recordatorios: no se repite el mismo recordatorio');
+  const res2 = (await staff.call('GET', '/api/staff/recordatorios')).data;
+  ok(typeof res2.citas === 'number' && typeof res2.con_correo === 'number', 'recordatorios: el panel cuenta citas de mañana, con y sin correo');
+  // cancelada: no se avisa
+  r = await book(4, { telefono: '573008880005', nombre: 'Eva Cancelada', correo: 'eva@test.co' });
+  await query("update citas set estado = 'cancelada' where cliente_id in (select id from clientes where telefono = '573008880005')");
+  r = await staff.call('POST', '/api/staff/recordatorios/enviar', { dia: diaR });
+  ok(r.data.enviados === 0 && !sent.some((m) => m.to[0].email === 'eva@test.co'), 'recordatorios: una cita cancelada no recibe recordatorio');
+  // aislamiento
+  r = await maria.call('POST', '/api/staff/recordatorios/enviar', { dia: diaR });
+  ok(r.status === 200 && r.data.enviados === 0 && sent.length === 2, 'recordatorios: otro negocio no toca tus citas');
+  // corrida diaria
+  r = await new Jar().call('GET', '/api/cron/recordatorios');
+  ok(r.status === 503 && r.data.error === 'cron_not_configured', 'cron: sin CRON_SECRET se niega');
+  process.env.CRON_SECRET = 'secreto-de-prueba-largo-123';
+  r = await new Jar().call('GET', '/api/cron/recordatorios');
+  ok(r.status === 401, 'cron: sin credencial responde 401');
+  r = await new Jar().call('GET', '/api/cron/recordatorios', undefined, { authorization: 'Bearer otro-secreto-distinto-123456' });
+  ok(r.status === 401, 'cron: con credencial equivocada responde 401');
+  await query("update citas set recordatorio_en = null where id = $1", [citaA]);
+  await staff.call('PUT', '/api/staff/config', { recordatorios_correo: 'off' });
+  r = await new Jar().call('GET', `/api/cron/recordatorios?dia=${diaR}`, undefined, { authorization: 'Bearer secreto-de-prueba-largo-123' });
+  ok(r.status === 200 && r.data.enviados === 0 && sent.length === 2, 'cron: respeta el interruptor apagado del negocio');
+  await staff.call('PUT', '/api/staff/config', { recordatorios_correo: 'on' });
+  r = await new Jar().call('GET', `/api/cron/recordatorios?dia=${diaR}`, undefined, { authorization: 'Bearer secreto-de-prueba-largo-123' });
+  ok(r.status === 200 && r.data.enviados === 1 && sent.length === 3 && r.data.negocios >= 2, 'cron: con la credencial correcta recorre los negocios y envía lo pendiente');
+  r = await new Jar().call('GET', '/api/salud');
+  ok(r.data.env.CRON_SECRET === true && 'GEOAPIFY' in r.data.env && 'BREVO_API_KEY' in r.data.env, 'salud: informa si CRON_SECRET, Geoapify y Brevo están puestos (solo sí/no)');
+  r = await new Jar().call('POST', '/api/public/n/x/entrar', {});
+  delete process.env.BREVO_API_KEY; delete process.env.CRON_SECRET; delete process.env.MAIL_FROM; delete process.env.BREVO_API_BASE; brevo.close();
+}
+
 console.log(`\n${pass} correctas, ${fail} con error`);
 llm.close();
 process.exit(fail ? 1 : 0);

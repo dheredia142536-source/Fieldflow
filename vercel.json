@@ -19,6 +19,9 @@
       "destination": "/api/router?__p=:path+"
     }
   ],
+  "crons": [
+    { "path": "/api/cron/recordatorios", "schedule": "0 13 * * *" }
+  ],
   "functions": {
     "api/**/*.mjs": {
       "maxDuration": 60,

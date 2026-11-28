@@ -84,6 +84,7 @@ export async function openNewCitaSheet({ onDone, date: startDate, cliente } = {}
   const lang = getLang();
   const phone = h('input', { class: 'input', type: 'tel', inputmode: 'tel', autocomplete: 'off', placeholder: '573001234567', value: cliente?.telefono || '' });
   const name = h('input', { class: 'input', type: 'text', autocomplete: 'off', value: cliente?.nombre || '' });
+  const mail = h('input', { class: 'input', type: 'email', inputmode: 'email', autocomplete: 'off', maxlength: '160', value: cliente?.correo || '' });
   const svc = h('select', { class: 'select' }, activos.map((x) => h('option', { value: x.id }, `${lang === 'en' ? x.nombre_en : x.nombre_es} · ${x.duracion_min} min`)));
   const date = h('input', { class: 'input', type: 'date', min: todayLocal(), value: startDate || addDays(todayLocal(), 1) });
   const notes = h('input', { class: 'input', type: 'text', maxlength: '500' });
@@ -96,6 +97,7 @@ export async function openNewCitaSheet({ onDone, date: startDate, cliente } = {}
   svc.addEventListener('change', load); date.addEventListener('change', load);
   const body = h('div', null,
     h('div', { class: 'grid2' }, field(t('cita.phone'), phone, t('cita.phoneHint')), field(t('cita.clientName'), name)),
+    field(t('cita.email'), mail, t('cita.emailHint')),
     h('div', { class: 'grid2' }, field(t('cita.service'), svc), field(t('cita.date'), date)),
     h('div', { class: 'field' }, h('span', { class: 'label' }, t('cita.slots')), picker.el),
     field(t('cita.notes'), notes));
@@ -104,7 +106,7 @@ export async function openNewCitaSheet({ onDone, date: startDate, cliente } = {}
     if (String(phone.value).replace(/\D/g, '').length < 7) { toast(t('err.invalid_phone'), true); phone.focus(); return; }
     const slot = picker.value;
     try {
-      await post('/api/staff/citas', { cliente: { telefono: phone.value, nombre: name.value }, servicio_id: svc.value, inicio: slot.inicio, recurso_id: slot.recurso_id, notas: notes.value });
+      await post('/api/staff/citas', { cliente: { telefono: phone.value, nombre: name.value, correo: mail.value }, servicio_id: svc.value, inicio: slot.inicio, recurso_id: slot.recurso_id, notas: notes.value });
       toast(t('cita.created')); s.close(); onDone?.();
     } catch (e) { toast(e.message, true); load(); }
   }));

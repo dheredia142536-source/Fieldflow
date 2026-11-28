@@ -1,5 +1,10 @@
 // Textos de Terrenos y Ganado (es / en). Cada clave existe en los dos idiomas (lo verifica `npm test`).
 export const es = {
+  'cfg.remTitle': 'Recordatorios por correo', 'cfg.remSub': 'Cada mañana (8:00 a. m., hora de Colombia) se avisa por correo a quienes tienen cita al día siguiente y dejaron su correo. Pueden ver o cancelar su cita desde el mismo correo.',
+  'cfg.remOn': 'Enviar recordatorios automáticos', 'cfg.remMail': 'Correo (Brevo)', 'cfg.remCron': 'Envío diario automático', 'cfg.remTomorrow': 'Citas de mañana', 'cfg.remCounts': '{a} con correo · {b} sin correo · {c} ya avisadas',
+  'cfg.remSend': 'Enviar ahora los de mañana', 'cfg.remConfirm': 'Se enviarán los correos pendientes de mañana (hasta {n}). ¿Continuar?', 'cfg.remDone': 'Recordatorios enviados: {n}', 'cfg.remNone': 'No había recordatorios pendientes.',
+  'cfg.remNoMail': 'Falta configurar Brevo (BREVO_API_KEY y MAIL_FROM) en Vercel.', 'cfg.remNoCron': 'Falta CRON_SECRET en Vercel para que el envío diario funcione.', 'cfg.remHint': 'Consejo: pide el correo al agendar. Sin correo no se puede avisar.',
+  'cita.email': 'Correo (opcional)', 'cita.emailHint': 'Para enviarle un recordatorio el día antes.', 'link.yourEmail': 'Tu correo (opcional, para recordarte la cita)',
   'ter.geoSearch': 'Buscar lugar o dirección', 'ter.geoPh': 'Ej. Apiay, Villavicencio', 'ter.geoHint': 'Elige una opción y se llenan solos el departamento, el municipio y las coordenadas.', 'ter.geoNone': 'Sin resultados. Escribe los datos a mano.',
   'ter.useMyLocation': 'Estoy en el terreno: usar mi ubicación', 'ter.located': 'Ubicación guardada', 'ter.locDenied': 'No pude obtener tu ubicación. Revisa el permiso del navegador.', 'ter.mapPreview': '¿Es aquí? Así se verá en el mapa',
   'ter.mapTitle': 'Ubicación', 'ter.directions': 'Cómo llegar', 'ter.addPlace': 'Agrega la ubicación para ver el mapa y compartir cómo llegar.', 'ter.coordsCopied': 'Coordenadas copiadas',
@@ -75,6 +80,11 @@ export const es = {
   'ga.milk14': 'Últimos 14 días', 'ga.milk14Cap': 'litros del hato', 'ga.perCow': 'Por vaca', 'ga.perCowCap': 'promedio diario aprox.', 'ga.milkRegister': 'Registrar la leche', 'ga.milkSub': 'Un total por día. Si lo registras otra vez el mismo día, se reemplaza.', 'ga.milkChart': 'Producción diaria',
 };
 export const en = {
+  'cfg.remTitle': 'Email reminders', 'cfg.remSub': 'Every morning (8:00 AM Colombia time) people with an appointment the next day get an email, if they left one. They can view or cancel from the same email.',
+  'cfg.remOn': 'Send automatic reminders', 'cfg.remMail': 'Email (Brevo)', 'cfg.remCron': 'Automatic daily run', 'cfg.remTomorrow': "Tomorrow's appointments", 'cfg.remCounts': '{a} with email · {b} without · {c} already notified',
+  'cfg.remSend': "Send tomorrow's now", 'cfg.remConfirm': "Pending emails for tomorrow will be sent (up to {n}). Continue?", 'cfg.remDone': 'Reminders sent: {n}', 'cfg.remNone': 'There were no pending reminders.',
+  'cfg.remNoMail': 'Brevo is not set up yet (BREVO_API_KEY and MAIL_FROM) in Vercel.', 'cfg.remNoCron': 'CRON_SECRET is missing in Vercel, so the daily run cannot work.', 'cfg.remHint': 'Tip: ask for the email when booking. Without it we cannot notify.',
+  'cita.email': 'Email (optional)', 'cita.emailHint': 'To send a reminder the day before.', 'link.yourEmail': 'Your email (optional, to remind you of the booking)',
   'ter.geoSearch': 'Search place or address', 'ter.geoPh': 'E.g. Apiay, Villavicencio', 'ter.geoHint': 'Pick an option and the state, town and coordinates fill in automatically.', 'ter.geoNone': 'No results. Type the details by hand.',
   'ter.useMyLocation': "I'm at the land: use my location", 'ter.located': 'Location saved', 'ter.locDenied': 'Could not get your location. Check the browser permission.', 'ter.mapPreview': 'Is this the place? This is how it will look on the map',
   'ter.mapTitle': 'Location', 'ter.directions': 'Get directions', 'ter.addPlace': 'Add the location to see the map and share how to get there.', 'ter.coordsCopied': 'Coordinates copied',

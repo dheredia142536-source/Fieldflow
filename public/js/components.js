@@ -8,15 +8,16 @@ import { fmtIsoTime } from './time.js';
 function identifyForm(ui, act) {
   const nm = h('input', { class: 'input', autocomplete: 'name', maxlength: '80', placeholder: t('link.yourName'), 'aria-label': t('link.yourName') });
   const tel = h('input', { class: 'input', type: 'tel', inputmode: 'tel', autocomplete: 'tel', maxlength: '20', placeholder: t('link.yourPhone'), 'aria-label': t('link.yourPhone') });
+  const mail = h('input', { class: 'input', type: 'email', inputmode: 'email', autocomplete: 'email', maxlength: '160', placeholder: t('link.yourEmail'), 'aria-label': t('link.yourEmail') });
   const ok = h('input', { type: 'checkbox' });
   const go = h('button', { class: 'btn btn--primary btn--block', type: 'button' }, t('link.continue'));
   const box = h('form', { class: 'ucard idform', novalidate: true },
-    h('h4', null, icon('user', 18), t('link.yourData')), nm, tel,
+    h('h4', null, icon('user', 18), t('link.yourData')), nm, tel, mail,
     h('label', { class: 'check-line idform__ok' }, ok, h('span', null, t('link.consent'), ' ', h('a', { href: '/privacidad', target: '_blank', rel: 'noopener noreferrer' }, t('link.privacy')))), go);
   box.addEventListener('submit', (e) => { e.preventDefault(); go.click(); });
   go.addEventListener('click', () => busy(go, async () => {
     try {
-      await post('/api/client/identificar', { nombre: nm.value, telefono: tel.value, acepta: ok.checked });
+      await post('/api/client/identificar', { nombre: nm.value, telefono: tel.value, correo: mail.value, acepta: ok.checked });
       box.replaceChildren(h('h4', null, icon('check', 18), t('link.saved', { n: nm.value.trim().split(/\s+/)[0] })));
       act?.(t('link.confirmLabel'), ui.payload || 'confirm');
     } catch (e) { toast(e.message, true); }

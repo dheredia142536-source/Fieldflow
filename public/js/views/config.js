@@ -125,8 +125,28 @@ export default async function config({ main, isCurrent, rerender }) {
       h('div', { class: 'item__main' }, h('div', { class: 'item__title' }, r.nombre), h('div', { class: 'item__sub' }, `${r.tipo ? `${r.tipo} · ` : ''}${summary(r)}`)),
       r.activo ? null : h('span', { class: 'badge' }, t('cfg.inactive')), icon('edit', 18)))) : h('p', { class: 'muted' }, t('cfg.noResourcesYet')));
 
+  // ── Recordatorios por correo ──
+  const remBox = h('section', { class: 'card card--surface', 'aria-labelledby': 's5' }, h('h2', { class: 'sectiontitle', id: 's5' }, t('cfg.remTitle')), h('div', { class: 'loading' }, h('div', { class: 'spinner' })));
+  const paintRem = (R) => {
+    clear(remBox);
+    const on = h('input', { type: 'checkbox', checked: R.activo });
+    on.addEventListener('change', async () => { try { await put('/api/staff/config', { recordatorios_correo: on.checked ? 'on' : 'off' }); toast(t('common.saved')); } catch (e) { on.checked = !on.checked; toast(e.message, true); } });
+    const send = h('button', { class: 'btn btn--secondary btn--sm', type: 'button', disabled: !R.correo_ok || !R.con_correo }, icon('send', 16), t('cfg.remSend'));
+    send.addEventListener('click', async () => {
+      if (!(await confirmDialog({ title: t('cfg.remSend'), text: t('cfg.remConfirm', { n: R.con_correo - R.enviados }), okLabel: t('cfg.remSend') }))) return;
+      busy(send, async () => { try { const r = await post('/api/staff/recordatorios/enviar', {}); toast(r.enviados ? t('cfg.remDone', { n: r.enviados }) : t('cfg.remNone')); paintRem(await get('/api/staff/recordatorios')); } catch (e) { toast(e.message, true); } });
+    });
+    remBox.append(h('h2', { class: 'sectiontitle', id: 's5' }, t('cfg.remTitle')), h('p', { class: 'hint' }, t('cfg.remSub')),
+      h('label', { class: 'check-line' }, on, t('cfg.remOn')),
+      row(t('cfg.remMail'), dot(R.correo_ok)), row(t('cfg.remCron'), dot(R.cron_ok)),
+      row(t('cfg.remTomorrow'), h('span', null, t('cfg.remCounts', { a: R.con_correo, b: R.sin_correo, c: R.enviados }))),
+      !R.correo_ok ? h('p', { class: 'hint' }, t('cfg.remNoMail')) : null, !R.cron_ok ? h('p', { class: 'hint' }, t('cfg.remNoCron')) : null,
+      R.sin_correo ? h('p', { class: 'hint' }, t('cfg.remHint')) : null, h('div', { class: 'row', style: 'margin-top:12px' }, send));
+  };
+  get('/api/staff/recordatorios').then(paintRem).catch(() => clear(remBox));
+
   main.append(h('div', { class: 'settings' },
     h('div', { class: 'pagehead' }, h('div', null, h('h1', null, t('nav.settings')), h('p', null, t('cfg.lead')))),
-    status, bizForm, services, resources));
+    status, bizForm, remBox, services, resources));
   return null;
 }
