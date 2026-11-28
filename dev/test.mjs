@@ -201,6 +201,8 @@ const sim3 = { data: await enlace(NID, '573005550000', 'Luz') };
 await c2.call('POST', '/api/auth/enter', { token: new URL(sim3.data.url).searchParams.get('t') });
 await c2.call('GET', '/api/client/chat');
 const sv = (await staff.call('GET', '/api/staff/catalogo')).data.servicios.find((s) => s.nombre_es === 'Cosecha');
+// Los datos de ejemplo pueden dejar ocupado todo el próximo día hábil (que es el que consulta la IA simulada): se libera para esta prueba.
+{ const dd = new Date(Date.now() - 5 * 3600000); do { dd.setUTCDate(dd.getUTCDate() + 1); } while ([0, 6].includes(dd.getUTCDay())); await query('delete from citas where inicio like $1 and recurso_id in (select recurso_id from servicio_recurso where servicio_id = $2)', [`${dd.toISOString().slice(0, 10)}%`, sv.id]); }
 const say2 = async (texto, payload) => (await c2.call('POST', '/api/client/chat', { texto, payload, idioma: 'es' })).data.mensajes.at(-1);
 m = await say2('Cosecha', `svc:${sv.id}`);
 ok(m.meta.ui?.type === 'chips' && m.meta.ui.options[0].payload.startsWith('slot:'), 'la IA consulta disponibilidad y el servidor adjunta los horarios');
@@ -776,15 +778,18 @@ section('22. Recordatorios de cita por correo');
   ok(r.status === 200 && r.data.activo === true && r.data.correo_ok === true && r.data.cron_ok === false, 'recordatorios: el panel indica si el correo y la corrida diaria están listos');
   const catR = (await staff.call('GET', '/api/staff/catalogo')).data; const svcR = catR.servicios[0];
   let diaR = null; let slotsR = [];
-  for (let i = 2; i <= 12 && !slotsR.length; i++) { const f = addDays(hoyR, i); const x = (await staff.call('GET', `/api/staff/disponibilidad?servicio_id=${svcR.id}&fecha=${f}`)).data.slots; const uniq = [...new Map(x.map((s) => [s.inicio, s])).values()]; if (x.length >= 12) { diaR = f; slotsR = x; } }
-  ok(diaR && slotsR.length >= 12, 'recordatorios: hay un día con cupos para probar');
-  let ptr = 0;
-  const book = async (_i, cli) => { let x = null; while (ptr < slotsR.length) { const sl = slotsR[ptr++]; x = await staff.call('POST', '/api/staff/citas', { cliente: cli, servicio_id: svcR.id, inicio: sl.inicio, recurso_id: sl.recurso_id }); if (x.status !== 409) break; } return x; };
-  r = await book(0, { telefono: '573008880001', nombre: 'Ana Gómez', correo: 'ana@test.co' });
+  // Se elige, dentro de la próxima semana (el límite del envío manual), el día con más cupos libres.
+  for (let i = 2; i <= 7; i++) { const f = addDays(hoyR, i); const x = (await staff.call('GET', `/api/staff/disponibilidad?servicio_id=${svcR.id}&fecha=${f}`)).data.slots; if (x.length > slotsR.length) { diaR = f; slotsR = x; } }
+  ok(diaR && slotsR.length >= 6, 'recordatorios: hay un día con cupos para probar');
+  // La cita de Ana se crea por la API (valida el correo); las demás se insertan directo para no depender de los cupos libres.
+  let r0 = null; for (const sl of slotsR) { r0 = await staff.call('POST', '/api/staff/citas', { cliente: { telefono: '573008880001', nombre: 'Ana Gómez', correo: 'ana@test.co' }, servicio_id: svcR.id, inicio: sl.inicio, recurso_id: sl.recurso_id }); if (r0.status !== 409) break; }
+  r = r0;
   ok(r.status === 200, 'recordatorios: la cita manual acepta el correo del cliente');
   const citaA = r.data.cita?.id || r.data.id;
-  r = await book(1, { telefono: '573008880002', nombre: 'Beto Sin Correo' });
-  r = await book(2, { telefono: '573008880003', nombre: 'Carla Ficha' });
+  const { upsertCliente: upCli } = await import('../lib/convos.mjs'); const { localToUtc: l2u } = await import('../lib/time.mjs');
+  const mkCita = (cli, hora) => withNegocio(NID, async () => { const c = await upCli(cli); const ini = l2u(diaR, hora); const id = crypto.randomUUID(); await query("insert into citas (id, negocio_id, cliente_id, servicio_id, recurso_id, inicio, fin, estado, origen, creado_en) values ($1, $2, $3, $4, $5, $6, $7, 'confirmada', 'manual', $8)", [id, NID, c.id, svcR.id, catR.recursos[0].id, ini.toISOString(), new Date(ini.getTime() + 3600000).toISOString(), new Date().toISOString()]); return id; });
+  await mkCita({ telefono: '573008880002', nombre: 'Beto Sin Correo' }, '15:00');
+  await mkCita({ telefono: '573008880003', nombre: 'Carla Ficha' }, '16:00');
   r = await staff.call('POST', '/api/staff/citas', { cliente: { telefono: '573008880004', nombre: 'Dani Correo Malo', correo: 'no-es-correo' }, servicio_id: svcR.id, inicio: slotsR[0].inicio, recurso_id: slotsR[0].recurso_id });
   ok(r.status === 400 && r.data.error === 'invalid_email', 'recordatorios: rechaza un correo inválido');
   const crmR = (await staff.call('GET', '/api/staff/crm')).data.contactos.find((c) => c.nombre === 'Carla Ficha');
@@ -801,8 +806,8 @@ section('22. Recordatorios de cita por correo');
   const res2 = (await staff.call('GET', '/api/staff/recordatorios')).data;
   ok(typeof res2.citas === 'number' && typeof res2.con_correo === 'number', 'recordatorios: el panel cuenta citas de mañana, con y sin correo');
   // cancelada: no se avisa
-  r = await book(4, { telefono: '573008880005', nombre: 'Eva Cancelada', correo: 'eva@test.co' });
-  await query("update citas set estado = 'cancelada' where cliente_id in (select id from clientes where telefono = '573008880005')");
+  const idEva = await mkCita({ telefono: '573008880005', nombre: 'Eva Cancelada', correo: 'eva@test.co' }, '14:00');
+  await query("update citas set estado = 'cancelada' where id = $1", [idEva]);
   r = await staff.call('POST', '/api/staff/recordatorios/enviar', { dia: diaR });
   ok(r.data.enviados === 0 && !sent.some((m) => m.to[0].email === 'eva@test.co'), 'recordatorios: una cita cancelada no recibe recordatorio');
   // aislamiento
