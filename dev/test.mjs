@@ -4,7 +4,7 @@ import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { mockCompletion } from './mock-llm.mjs';
 
-process.env.FF_LOCAL_DB = ':memory:';
+process.env.FF_LOCAL_DB = process.env.FF_TEST_PG ? '' : ':memory:'; if (process.env.FF_TEST_PG) process.env.DATABASE_URL = process.env.FF_TEST_PG;
 process.env.SESSION_SECRET = 'test-session-secret-0123456789';
 process.env.ADMIN_EMAIL = 'admin@test.dev';
 process.env.ADMIN_PASSWORD = 'password-123';
@@ -202,7 +202,7 @@ await c2.call('POST', '/api/auth/enter', { token: new URL(sim3.data.url).searchP
 await c2.call('GET', '/api/client/chat');
 const sv = (await staff.call('GET', '/api/staff/catalogo')).data.servicios.find((s) => s.nombre_es === 'Cosecha');
 // Los datos de ejemplo pueden dejar ocupado todo el próximo día hábil (que es el que consulta la IA simulada): se libera para esta prueba.
-{ const dd = new Date(Date.now() - 5 * 3600000); do { dd.setUTCDate(dd.getUTCDate() + 1); } while ([0, 6].includes(dd.getUTCDay())); await query('delete from citas where inicio like $1 and recurso_id in (select recurso_id from servicio_recurso where servicio_id = $2)', [`${dd.toISOString().slice(0, 10)}%`, sv.id]); }
+{ const dd = new Date(Date.now() - 5 * 3600000); do { dd.setUTCDate(dd.getUTCDate() + 1); } while ([0, 6].includes(dd.getUTCDay())); await query('delete from citas where cast(inicio as text) like $1 and recurso_id in (select recurso_id from servicio_recurso where servicio_id = $2)', [`${dd.toISOString().slice(0, 10)}%`, sv.id]); }
 const say2 = async (texto, payload) => (await c2.call('POST', '/api/client/chat', { texto, payload, idioma: 'es' })).data.mensajes.at(-1);
 m = await say2('Cosecha', `svc:${sv.id}`);
 ok(m.meta.ui?.type === 'chips' && m.meta.ui.options[0].payload.startsWith('slot:'), 'la IA consulta disponibilidad y el servidor adjunta los horarios');
